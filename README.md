@@ -3,6 +3,9 @@ The goal is to model red wine quality based on physicochemical tests using regre
 
 ![image](https://user-images.githubusercontent.com/67810593/128819052-f295eda3-e88c-4112-97db-dbc63442fdb6.png)
 
+Dataset: https://archive.ics.uci.edu/ml/datasets/Wine+Quality
+
+
 Input variables (based on physicochemical tests):
 1 - fixed acidity
 2 - volatile acidity
