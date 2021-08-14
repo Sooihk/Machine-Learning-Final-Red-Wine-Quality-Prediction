@@ -1,0 +1,10 @@
+library(ggplot2)
+library(lubridate)
+library(zoo)
+library(dplyr)
+library(scales)
+library(tidyverse)
+library(GGally)
+
+redwine_Data <- read.csv(file = "http://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv", header = TRUE, sep = ";") %>%
+  na.omit()
