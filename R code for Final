@@ -5,6 +5,26 @@ library(dplyr)
 library(scales)
 library(tidyverse)
 library(GGally)
+library(corrplot)
 
 redwine_Data <- read.csv(file = "http://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv", header = TRUE, sep = ";") %>%
   na.omit()
+  
+#shows dimensions of dataset
+str(redwine_Data)
+
+#summary of each column
+summary(redwine_Data)
+
+#split dataset into training and testing, 70:30 split. Leaves 1119 obs for training and 381 obs for testing.
+redwine_training <- sample_frac(tbl=redwine_Data, replace = FALSE, size = 0.70)
+redwine_test <- anti_join(redwine_Data, redwine_training)
+
+#find correlations, use cor() to produce matrix and corrplot to display a plot 
+cor(redwine_Data)
+corrplot((cor(redwine_Data)))
+#display in order the value the predictors correlate to Quality 
+rankQuality <- cor(redwine_Data)[-12,12] %>% abs()
+head(rankQuality[order(rankQuality, decreasing=TRUE)],12)
+
+
