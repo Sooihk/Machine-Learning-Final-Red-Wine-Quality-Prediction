@@ -27,4 +27,63 @@ corrplot((cor(redwine_Data)))
 rankQuality <- cor(redwine_Data)[-12,12] %>% abs()
 head(rankQuality[order(rankQuality, decreasing=TRUE)],12)
 
+#display table of quality scores. Most the scores are in 5 and 6 with little data for lower and higher scores. 
+table(redwine_Data$quality)
 
+##EXPLORATORY DATA ANALYSIS
+
+#making histograms/density plots to visualize spread of data for each predictor
+
+hist1 <- ggplot(redwine_Data, aes(x=alcohol)) + geom_histogram(aes(y=..density..),color="black", fill="white") + 
+  geom_density(alpha=.2, fill="#FF6666") + labs(x="Alcohol percentage", y="Density") + 
+  geom_vline(aes(xintercept=mean(alcohol)), color="blue", linetype="dashed", size=1)
+
+hist2 <- ggplot(redwine_Data, aes(x=pH)) + geom_histogram(aes(y=..density..),color="black", fill="white") + 
+  geom_density(alpha=.2, fill="#FF6666") + labs(x="pH", y="Density") + 
+  geom_vline(aes(xintercept=mean(pH)), color="blue", linetype="dashed", size=1)
+
+hist3 <- ggplot(redwine_Data, aes(x=fixed.acidity)) + geom_histogram(aes(y=..density..),color="black", fill="white") + 
+  geom_density(alpha=.2, fill="#FF6666") + labs(x="fixed acidity", y="Density") + 
+  geom_vline(aes(xintercept=mean(fixed.acidity)), color="blue", linetype="dashed", size=1)
+
+hist4 <- ggplot(redwine_Data, aes(x=volatile.acidity)) + geom_histogram(aes(y=..density..),color="black", fill="white") + 
+  geom_density(alpha=.2, fill="#FF6666") + labs(x="volatile acidity", y="Density") + 
+  geom_vline(aes(xintercept=mean(volatile.acidity)), color="blue", linetype="dashed", size=1)
+
+hist5 <- ggplot(redwine_Data, aes(x=citric.acid)) + geom_histogram(aes(y=..density..),color="black", fill="white") + 
+  geom_density(alpha=.2, fill="#FF6666") + labs(x="citric acid", y="Density") + 
+  geom_vline(aes(xintercept=mean(citric.acid)), color="blue", linetype="dashed", size=1)
+
+hist6 <- ggplot(redwine_Data, aes(x=residual.sugar)) + geom_histogram(aes(y=..density..),color="black", fill="white") + 
+  geom_density(alpha=.2, fill="#FF6666") + labs(x="residual sugar", y="Density") + 
+  geom_vline(aes(xintercept=mean(residual.sugar)), color="blue", linetype="dashed", size=1)
+
+hist7 <- ggplot(redwine_Data, aes(x=chlorides)) + geom_histogram(aes(y=..density..),color="black", fill="white") + 
+  geom_density(alpha=.2, fill="#FF6666") + labs(x="chlorides", y="Density") + 
+  geom_vline(aes(xintercept=mean(chlorides)), color="blue", linetype="dashed", size=1)
+
+hist8 <- ggplot(redwine_Data, aes(x=free.sulfur.dioxide)) + geom_histogram(aes(y=..density..),color="black", fill="white") + 
+  geom_density(alpha=.2, fill="#FF6666") + labs(x="free sulfur dioxide", y="Density") + 
+  geom_vline(aes(xintercept=mean(free.sulfur.dioxide)), color="blue", linetype="dashed", size=1)
+
+hist9 <- ggplot(redwine_Data, aes(x=total.sulfur.dioxide)) + geom_histogram(aes(y=..density..),color="black", fill="white") + 
+  geom_density(alpha=.2, fill="#FF6666") + labs(x="total sulfur dioxide", y="Density") + 
+  geom_vline(aes(xintercept=mean(total.sulfur.dioxide)), color="blue", linetype="dashed", size=1)
+
+hist10 <- ggplot(redwine_Data, aes(x=density)) + geom_histogram(aes(y=..density..),color="black", fill="white") + 
+  geom_density(alpha=.2, fill="#FF6666") + labs(x="density", y="Density") + 
+  geom_vline(aes(xintercept=mean(density)), color="blue", linetype="dashed", size=1)
+
+hist11 <- ggplot(redwine_Data, aes(x=sulphates)) + geom_histogram(aes(y=..density..),color="black", fill="white") + 
+  geom_density(alpha=.2, fill="#FF6666") + labs(x="sulphates", y="Density") + 
+  geom_vline(aes(xintercept=mean(sulphates)), color="blue", linetype="dashed", size=1)
+
+hist12 <- ggplot(redwine_Data, aes(x=quality)) + geom_histogram(aes(y=..density..),color="black", fill="white") + 
+  geom_density(alpha=.2, fill="#FF6666") + labs(x="quality", y="Density") + 
+  geom_vline(aes(xintercept=mean(quality)), color="blue", linetype="dashed", size=1)
+
+
+plot_grid(hist1, hist2, hist3, hist4)
+plot_grid(hist5, hist6, hist7, hist8)
+plot_grid(hist9, hist10, hist11, hist12)
+#density plots show that most distributions or positively skewed. pH and density are normally distributed. 
