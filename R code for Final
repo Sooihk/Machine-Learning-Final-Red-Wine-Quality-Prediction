@@ -8,7 +8,8 @@ library(GGally)
 library(corrplot)
 library(MASS)
 library(cowplot)
-#-----------------------------------------------------------------DATA SOURCE------------------------------------------------------------------
+
+#------------------------------------DATA SOURCE
 
 #read in data and separate out the semicolons, make 1st row a header, omit any missing values. 
 redwine_Data <- read.csv(file = "http://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv", header = TRUE, sep = ";") %>%
@@ -20,7 +21,7 @@ str(redwine_Data)
 #summary of each column
 summary(redwine_Data)
 
-#----------------------------------------------------------------DATA PREPROCESSING---------------------------------------------------------------
+#------------------------------------DATA PREPROCESSING
 
 #split dataset into training and testing, 70:30 split. Leaves 1119 obs for training and 381 obs for testing.
 redwine_training <- sample_frac(tbl=redwine_Data, replace = FALSE, size = 0.70)
@@ -40,7 +41,7 @@ head(rankQuality[order(rankQuality, decreasing=TRUE)],12)
 #display table of quality scores. Most the scores are in 5 and 6 with little data for lower and higher scores. 
 table(redwine_Data$quality)
 
-#---------------------------------------------------------------EXPLORATORY DATA ANALYSIS----------------------------------------------------------
+#----------------------------------------------EXPLORATORY DATA ANALYSIS
 
 #making histograms/density plots to visualize spread of data for each predictor
 
@@ -92,11 +93,54 @@ hist12 <- ggplot(redwine_Data, aes(x=quality)) + geom_histogram(aes(y=..density.
   geom_density(alpha=.2, fill="#FF6666") + labs(x="quality", y="Density") + 
   geom_vline(aes(xintercept=mean(quality)), color="blue", linetype="dashed", size=1)
 
-
 plot_grid(hist1, hist2, hist3, hist4)
 plot_grid(hist5, hist6, hist7, hist8)
 plot_grid(hist9, hist10, hist11, hist12)
 #density plots show that most distributions or positively skewed. pH and density are normally distributed. 
+
+
+
+#QQ plots
+qqplot_pH <- ggplot(redwine_Data, aes(sample=pH)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
+  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="QQ plot pH") + theme_cowplot()
+
+qqplot_density <- ggplot(redwine_Data, aes(sample=density)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
+  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="QQ plot density") + theme_cowplot()
+
+qqplot_alcohol <- ggplot(redwine_Data, aes(sample=alcohol)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
+  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="QQ plot alcohol") + theme_cowplot()
+
+qqplot_chlorides <- ggplot(redwine_Data, aes(sample=chlorides)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
+  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="QQ plot chlorides") + theme_cowplot()
+
+qqplot_fixed.acidity <- ggplot(redwine_Data, aes(sample=fixed.acidity)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
+  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="QQ plot fixed.acidity") + theme_cowplot()
+
+qqplot_citric.acid <- ggplot(redwine_Data, aes(sample=citric.acid)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
+  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="QQ plot citric.acid") + theme_cowplot()
+
+qqplot_volatile.acidity <- ggplot(redwine_Data, aes(sample=volatile.acidity)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
+  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="QQ plot volatile.acidity") + theme_cowplot()
+
+qqplot_residual.sugar <- ggplot(redwine_Data, aes(sample=residual.sugar)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
+  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="QQ plot residual.sugar") + theme_cowplot()
+
+qqplot_free.sulfur.dioxide <- ggplot(redwine_Data, aes(sample=free.sulfur.dioxide)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
+  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="QQ plot free.sulfur.dioxide") + theme_cowplot()
+
+qqplot_total.sulfur.dioxide <- ggplot(redwine_Data, aes(sample=total.sulfur.dioxide)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
+  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="QQ plot total.sulfur.dioxide") + theme_cowplot()
+
+qqplot_sulphates <- ggplot(redwine_Data, aes(sample=sulphates)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
+  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="QQ plot sulphates") + theme_cowplot()
+
+plot_grid(qqplot_pH, qqplot_density, qqplot_alcohol, qqplot_fixed.acidity)
+plot_grid(qqplot_citric.acid, qqplot_chlorides, qqplot_volatile.acidity, qqplot_residual.sugar)
+plot_grid(qqplot_free.sulfur.dioxide, qqplot_total.sulfur.dioxide, qqplot_sulphates)
+#QQ plots of pH and density are shown to have near normal distribution. For the other variables, their data is close to normal
+#distribution within 2 standard deviations of the mean but become right skewed. 
+
+
 
 #Create boxplots of each predictor vs quality
 box1 <- ggplot(redwine_Data, aes(x=as.factor(quality), y=alcohol, fill=as.factor(quality))) + geom_boxplot() + 
