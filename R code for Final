@@ -180,3 +180,31 @@ plot_grid(box1,box2,box3,box4)
 plot_grid(box5,box6,box7,box8)
 plot_grid(box9,box10,box11)
 #look for pattern in these boxplots
+
+#-----------------------------------Feature engineering and selection-------------------------------------------------
+
+# 3 METHODS OF STANDARDIZING OUR FEATURES: log transformation, min-max scaling, standard z score scaling. 
+
+#1. we could log transform the data to help fix the positively skewed data for several variables. When we look at a plot of the
+# log transformation, it does not improve the normalization or the linearity between quality and the predictors.
+
+log_redwine <- log(redwine_Data[,1:11])
+log_redwine$quality <- redwine_Data$quality
+
+#2. Or we could normalize data with min-max scaling, scale each feature to fall in [0,1] interval. The effect of outliers on the data values
+#are suppressed to a extent. 
+
+library(caret)
+process <- preProcess(redwine_Data[,c(1:11)], method=c("range"))
+minmax_Redscale <- predict(process, redwine_Data[,c(1:11)])
+minmax_Redscale$quality <- redwine_Data$quality
+
+#3. I might prefer this method
+#Or we can do standard scaling by scaling the variables is to convert them to z-scores by
+#subtracting the mean and dividing by the standard deviation. Standardizing the data means
+#we will transform the dataset so its distribution will have a mean 0 and a standard deviation of 1. 
+#Need to equalize the range of the data.
+library(caret)
+preproc1 <- preProcess(redwine_Data[,c(1:11)], method=c("center", "scale"))
+standard_redwine <- predict(preproc1, redwine_Data[,c(1:11)])
+standard_redwine$quality <- redwine_Data$quality
