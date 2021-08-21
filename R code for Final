@@ -9,7 +9,7 @@ library(corrplot)
 library(MASS)
 library(cowplot)
 
-#-----------------------------------------------DATA SOURCE----------------------------------------------------------------
+#-----------------------------------------------DATA SOURCE AND PREPROCESSING----------------------------------------------------------------
 
 #read in data and separate out the semicolons, make 1st row a header, omit any missing values. 
 redwine_Data <- read.csv(file = "http://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv", header = TRUE, sep = ";") %>%
@@ -20,13 +20,6 @@ str(redwine_Data)
 
 #summary of each column
 summary(redwine_Data)
-
-#--------------------------------------------DATA PREPROCESSING-------------------------------------------------------
-
-#split dataset into training and testing, 70:30 split. Leaves 1119 obs for training and 381 obs for testing.
-redwine_training <- sample_frac(tbl=redwine_Data, replace = FALSE, size = 0.70)
-redwine_test <- anti_join(redwine_Data, redwine_training)
-
 
 
 #----------------------------------------------EXPLORATORY DATA ANALYSIS-----------------------------------------
@@ -189,28 +182,36 @@ table(redwine_Data$quality)
 
 #-----------------------------------Feature engineering and selection-------------------------------------------------
 # we could log transform the data to help fix the positively skewed data for several variables. When we look at a plot of the
-# log transformation, it does not improve the normalization or the linearity between quality and the predictors.
+# log transformation, it does not improve the normalization or the linearity between quality and the predictors. Will most likely 
+#not need to transform
 
-log_redwine <- log(redwine_Data[,1:11])
-log_redwine$quality <- redwine_Data$quality
+#log_redwine <- log(redwine_Data[,1:11])
+#log_redwine$quality <- redwine_Data$quality
 
-#Or we could normalize data with min-max scaling, scale each feature to fall in [0,1] interval. The effect of outliers on the data values
-#are suppressed to a extent. 
 
-library(caret)
-process <- preProcess(redwine_Data[,c(1:11)], method=c("range"))
-minmax_Redscale <- predict(process, redwine_Data[,c(1:11)])
-minmax_Redscale$quality <- redwine_Data$quality
+#Remove outliers, I will add code upon this. 
 
-#I might prefer this method
-#Or we can do standard scaling by scaling the variables is to convert them to z-scores by
-#subtracting the mean and dividing by the standard deviation. Standardizing the data means
-#we will transform the dataset so its distribution will have a mean 0 and a standard deviation of 1. 
-#Need to equalize the range of the data.
+#------------------------------------------------Feature Selection-------------------------------------------------
 
-library(caret)
-preproc1 <- preProcess(redwine_Data[,c(1:11)], method=c("center", "scale"))
-standard_redwine <- predict(preproc1, redwine_Data[,c(1:11)])
-standard_redwine$quality <- redwine_Data$quality
+#split dataset into training and testing, 70:30 split. Leaves 1119 obs for training and 381 obs for testing.
+redwine_training <- sample_frac(tbl=redwine_Data, replace = FALSE, size = 0.80)
+redwine_test <- anti_join(redwine_Data, redwine_training)
 
-#There are no missing values in the dataset. Thus no rows need to be dropped
+#Initial model performance for reference check
+first_model <- lm(redwine_training$quality~., data=redwine_training)
+summary(first_model)
+#Linear regression is an analysis that assesses whether one or more predictor variables explain the dependent (criterion) variable.
+#The regression has five key assumptions:
+#Linear relationship
+#Multivariate normality
+#No or little multicollinearity
+#No auto-correlation
+#Homoscedasticity
+
+par(mfrow=c(2,2)) # Change the panel layout to 2 x 2 
+lapply(c(1,2,4,5), # showing 4 types of plots
+       function(x) plot(first_model, 
+                        which = x, 
+                        # labels.id = 1:nrow(X.train_red),
+                        cook.levels = c(0.05, 0.1))) %>% invisible()
+
