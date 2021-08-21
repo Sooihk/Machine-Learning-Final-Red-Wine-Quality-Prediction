@@ -27,19 +27,7 @@ summary(redwine_Data)
 redwine_training <- sample_frac(tbl=redwine_Data, replace = FALSE, size = 0.70)
 redwine_test <- anti_join(redwine_Data, redwine_training)
 
-#find correlations, use cor() to produce matrix and corrplot to display a plot 
-cor(redwine_Data)
-corrplot(cor(redwine_Data), method="color",addCoef.col = "black", diag=FALSE,number.cex=0.7)
-#density and fixed.acidity (0.67), fixed.acidity and citric acid (0.67), fixed.acidity and pH (-0.68), free.sulfur.dioxide
-#and total.sulfur.dioxide (0.67) have strong correlation, perhaps high multicollinearity
 
-
-#display in order the value the predictors correlate to Quality 
-rankQuality <- cor(redwine_Data)[-12,12] %>% abs()
-head(rankQuality[order(rankQuality, decreasing=TRUE)],12)
-
-#display table of quality scores. Most the scores are in 5 and 6 with little data for lower and higher scores. 
-table(redwine_Data$quality)
 
 #----------------------------------------------EXPLORATORY DATA ANALYSIS-----------------------------------------
 
@@ -138,7 +126,8 @@ plot_grid(qqplot_pH, qqplot_density, qqplot_alcohol, qqplot_fixed.acidity)
 plot_grid(qqplot_citric.acid, qqplot_chlorides, qqplot_volatile.acidity, qqplot_residual.sugar)
 plot_grid(qqplot_free.sulfur.dioxide, qqplot_total.sulfur.dioxide, qqplot_sulphates)
 #QQ plots of pH and density are shown to have near normal distribution. For the other variables, their data is close to normal
-#distribution within 2 standard deviations of the mean but become right skewed. 
+#distribution within 2 standard deviations of the mean but become right skewed. Extremely positive skewed data is not desirable
+#since high levels can cause misleading data. For our case the data is not too positively skewed. 
 
 
 
@@ -180,18 +169,32 @@ plot_grid(box1,box2,box3,box4)
 plot_grid(box5,box6,box7,box8)
 plot_grid(box9,box10,box11)
 #look for pattern in these boxplots
+#We see linear positive relationship with quality from alchohol, sulphates, fixed acidity, and citric acid.
+#We also see a linear negative relationship with quality from density, volatile acidity, pH and chlorides 
+
+#find correlations, use cor() to produce matrix and corrplot to display a plot 
+cor(redwine_Data)
+corrplot(cor(redwine_Data), method="color",addCoef.col = "black", diag=FALSE,number.cex=0.7)
+#density and fixed.acidity (0.67), fixed.acidity and citric acid (0.67), fixed.acidity and pH (-0.68), free.sulfur.dioxide
+#and total.sulfur.dioxide (0.67) have strong correlation, perhaps high multicollinearity
+
+
+#display in order the value the predictors correlate to Quality 
+rankQuality <- cor(redwine_Data)[-12,12] %>% abs()
+head(rankQuality[order(rankQuality, decreasing=TRUE)],12)
+
+#display table of quality scores. Most the scores are in 5 and 6 with little data for lower and higher scores. 
+table(redwine_Data$quality)
+
 
 #-----------------------------------Feature engineering and selection-------------------------------------------------
-
-# 3 METHODS OF STANDARDIZING OUR FEATURES: log transformation, min-max scaling, standard z score scaling. 
-
-#1. we could log transform the data to help fix the positively skewed data for several variables. When we look at a plot of the
+# we could log transform the data to help fix the positively skewed data for several variables. When we look at a plot of the
 # log transformation, it does not improve the normalization or the linearity between quality and the predictors.
 
 log_redwine <- log(redwine_Data[,1:11])
 log_redwine$quality <- redwine_Data$quality
 
-#2. Or we could normalize data with min-max scaling, scale each feature to fall in [0,1] interval. The effect of outliers on the data values
+#Or we could normalize data with min-max scaling, scale each feature to fall in [0,1] interval. The effect of outliers on the data values
 #are suppressed to a extent. 
 
 library(caret)
@@ -199,12 +202,15 @@ process <- preProcess(redwine_Data[,c(1:11)], method=c("range"))
 minmax_Redscale <- predict(process, redwine_Data[,c(1:11)])
 minmax_Redscale$quality <- redwine_Data$quality
 
-#3. I might prefer this method
+#I might prefer this method
 #Or we can do standard scaling by scaling the variables is to convert them to z-scores by
 #subtracting the mean and dividing by the standard deviation. Standardizing the data means
 #we will transform the dataset so its distribution will have a mean 0 and a standard deviation of 1. 
 #Need to equalize the range of the data.
+
 library(caret)
 preproc1 <- preProcess(redwine_Data[,c(1:11)], method=c("center", "scale"))
 standard_redwine <- predict(preproc1, redwine_Data[,c(1:11)])
 standard_redwine$quality <- redwine_Data$quality
+
+#There are no missing values in the dataset. Thus no rows need to be dropped
