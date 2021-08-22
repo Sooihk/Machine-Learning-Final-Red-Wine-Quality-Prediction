@@ -165,22 +165,98 @@ plot_grid(box9,box10,box11)
 #We see linear positive relationship with quality from alchohol, sulphates, fixed acidity, and citric acid.
 #We also see a linear negative relationship with quality from density, volatile acidity, pH and chlorides 
 
-#find correlations, use cor() to produce matrix and corrplot to display a plot 
-cor(redwine_Data)
-corrplot(cor(redwine_Data), method="color",addCoef.col = "black", diag=FALSE,number.cex=0.7)
-#density and fixed.acidity (0.67), fixed.acidity and citric acid (0.67), fixed.acidity and pH (-0.68), free.sulfur.dioxide
-#and total.sulfur.dioxide (0.67) have strong correlation, perhaps high multicollinearity
-
-
-#display in order the value the predictors correlate to Quality 
-rankQuality <- cor(redwine_Data)[-12,12] %>% abs()
-head(rankQuality[order(rankQuality, decreasing=TRUE)],12)
-
 #display table of quality scores. Most the scores are in 5 and 6 with little data for lower and higher scores. 
 table(redwine_Data$quality)
 
 
-#-----------------------------------Feature engineering and selection-------------------------------------------------
+#-----------------------------------Feature engineering-------------------------------------------------
+#Remove outliers, I will add code upon this. 
+summary(redwine_Data)
+#Looking at the summary of each variable, we intially see there are outliers in most of the variables where the
+#max value and min values are very far from the mean of each column. 
+#We will be using Cook's Distance to remove these outliers as it is an estimate of a data point's influence.
+#Cook's distance takes into account an obeservation's leverage and residual. We will investigate points that
+#are more than 4x the mean of all distances. 
+
+#First use a multiple linear regression model as a baseline model to compare
+model1 <- lm(quality~., data=redwine_Data)
+summary(model1)
+#baseline model has adjusted R-squared of 0.3561
+par(mfrow=c(2,2))
+plot(model1)
+
+#From the diagnostic plots, we can see some outliers which we can remove to make our model a better fit. We use
+#cooks.distance function on our model to filter out values greater than 4x the mean. We plot the output of 
+#cooks.distance function to visualize which points are 4x the mean.
+par(mfrow=c(1,1))
+cooksD <- cooks.distance(model1)
+plot(cooksD, pch = "x", cex=1.5, main="Cooks distance influential points")
+abline(h=4*mean(cooksD, na.rm=TRUE), col = "blue", lwd = 2)
+
+par(mfrow=c(3,2))
+plot(lm(quality~alcohol, data=redwine_Data), which=c(5), main="alcohol")
+plot(lm(quality~citric.acid, data=redwine_Data), which=c(5), main="citric.acid")
+plot(lm(quality~total.sulfur.dioxide, data=redwine_Data), which=c(5), main="total.sulfur.dioxide")
+plot(lm(quality~pH, data=redwine_Data), which=c(5), main="pH")
+plot(lm(quality~chlorides, data=redwine_Data), which=c(5), main="chlorides")
+plot(lm(quality~fixed.acidity, data=redwine_Data), which=c(5), main="fixed.acidity")
+#The figure above shows some examples of the outliers having significant leverage. 
+
+influential_points <- cooksD[(cooksD > (4*mean(cooksD, na.rm=TRUE)))]
+wine_outliers <- redwine_Data[names(influential_points),]
+redwine_Data2 <- anti_join(redwine_Data, wine_outliers)
+#we see 67 data outliers were removed in new dataset. 
+
+model2 <- lm(redwine_Data2$quality~., data=redwine_Data2)
+summary(model2)
+#The adjusted R-squared has improved from 0.3561 to 0.3989(a 12% increase). The P-values have decreased for the majority of the 
+#features as well. 
+
+par(mfrow=c(2,2))
+plot(model2)
+#The new diagnostic plots have improved as well. The qqplot shows better normal distribution. The Residuals vs Leverage
+#plot does not have any outstanding points with great leverage. 
+
+skew1 <- skewness(redwine_Data$fixed.acidity)
+skew1 <- append(skew1, skewness(redwine_Data$volatile.acidity))
+skew1 <- append(skew1, skewness(redwine_Data$citric.acid))
+skew1 <- append(skew1, skewness(redwine_Data$residual.sugar))
+skew1 <- append(skew1, skewness(redwine_Data$chlorides))
+skew1 <- append(skew1, skewness(redwine_Data$free.sulfur.dioxide))
+skew1 <- append(skew1, skewness(redwine_Data$total.sulfur.dioxide))
+skew1 <- append(skew1, skewness(redwine_Data$density))
+skew1 <- append(skew1, skewness(redwine_Data$pH))
+skew1 <- append(skew1, skewness(redwine_Data$sulphates))
+skew1 <- append(skew1, skewness(redwine_Data$alcohol))
+skew1 <- append(skew1, skewness(redwine_Data$quality))
+
+skew2 <- skewness(redwine_Data2$fixed.acidity)
+skew2 <- append(skew2, skewness(redwine_Data2$volatile.acidity))
+skew2 <- append(skew2, skewness(redwine_Data2$citric.acid))
+skew2 <- append(skew2, skewness(redwine_Data2$residual.sugar))
+skew2 <- append(skew2, skewness(redwine_Data2$chlorides))
+skew2 <- append(skew2, skewness(redwine_Data2$free.sulfur.dioxide))
+skew2 <- append(skew2, skewness(redwine_Data2$total.sulfur.dioxide))
+skew2 <- append(skew2, skewness(redwine_Data2$density))
+skew2 <- append(skew2, skewness(redwine_Data2$pH))
+skew2 <- append(skew2, skewness(redwine_Data2$sulphates))
+skew2 <- append(skew2, skewness(redwine_Data2$alcohol))
+skew2 <- append(skew2, skewness(redwine_Data2$quality))
+
+skew1 <- as.data.frame(skew1)
+skew2 <- as.data.frame(skew2)
+summary_skew <- cbind(skew1, skew2)
+rownames(summary_skew) <- c("fixed.acidity", "volatile.acidity", "citric.acid", "residual.sugar", "chlorides",
+                            "free.sulfur.dioxide", "total.sulfur.dioxide", "density", "pH", 
+                            "sulphates", "alcohol","quality")
+colnames(summary_skew) <- c("Before", "After")
+summary_skew
+#The skewness after the outliers were removed has decreased for most variables. Skewness values between -0.5
+#and 0.5 mean the distribution is approximately symmetric. Residual.sugar and chlorides are still highly skewed 
+#to the right. 
+
+#----------------------------------------------------------------------------------------------------
+
 # we could log transform the data to help fix the positively skewed data for several variables. When we look at a plot of the
 # log transformation, it does not improve the normalization or the linearity between quality and the predictors. Will most likely 
 #not need to transform
@@ -189,17 +265,44 @@ table(redwine_Data$quality)
 #log_redwine$quality <- redwine_Data$quality
 
 
-#Remove outliers, I will add code upon this. 
+#********************************************FEATURE SELECTION*********************************************
 
-#------------------------------------------------Feature Selection-------------------------------------------------
+#find correlations, use cor() to produce matrix and corrplot to display a plot 
+cor(redwine_Data2)
+corrplot(cor(redwine_Data2), method="color",addCoef.col = "black", diag=FALSE,number.cex=0.7)
+#density and fixed.acidity (0.68), fixed.acidity and citric acid (0.68), fixed.acidity and pH (-0.69), free.sulfur.dioxide
+#and total.sulfur.dioxide (0.68) have strong correlation, perhaps high multicollinearity
 
+#display in order the value the predictors correlate to Quality 
+rankQuality <- cor(redwine_Data2)[-12,12] %>% abs()
+head(rankQuality[order(rankQuality, decreasing=TRUE)],12)
+#We see that alcohol, volatile.acidity, sulphates, and citric acid have the highest correlation with quality.
+
+#----------------------------------------------------------------------------------------------------
 #split dataset into training and testing, 70:30 split. Leaves 1119 obs for training and 381 obs for testing.
-redwine_training <- sample_frac(tbl=redwine_Data, replace = FALSE, size = 0.80)
-redwine_test <- anti_join(redwine_Data, redwine_training)
+redwine_training <- sample_frac(tbl=redwine_Data2, replace = FALSE, size = 0.80)
+redwine_test <- anti_join(redwine_Data2, redwine_training)
 
-#Initial model performance for reference check
-first_model <- lm(redwine_training$quality~., data=redwine_training)
-summary(first_model)
+
+#We also want to check multicollinearity(variables in a regression are correlated with each other). If we have
+#multicollinearity then we will not know exactly which variables are truly predictive of the outcome.
+#Thus we use the variance inflation factor(VIF) function to compute a multicollinearity score. The VIF measures
+#by how much the variance of the coefficient is inflated from multicollinearity.
+library(car)
+model2 <- lm(quality~., data=redwine_training)
+vif(model2)
+#All VIF values are below the generally accepted value of 10. Fixed acidity and density values show
+#that they are highly correlated We'll try a model without fixed.acidity
+model3 <- lm(quality~.-fixed.acidity, data=redwine_training)
+vif(model3)
+#Without fixed.acidity, VIF values of other variables have decreased, especially density. 
+#----------------------------------------------------------------------------------------------------
+
+#Use forward stepwise regression to find variables which make best model
+library(leaps)
+regfit.fwd <- regsubsets(quality~., data=redwine_training, nvmax=11, method="forward")
+reg.fwd.summary <- summary(regfit.fwd)
+
 #Linear regression is an analysis that assesses whether one or more predictor variables explain the dependent (criterion) variable.
 #The regression has five key assumptions:
 #Linear relationship
@@ -208,10 +311,4 @@ summary(first_model)
 #No auto-correlation
 #Homoscedasticity
 
-par(mfrow=c(2,2)) # Change the panel layout to 2 x 2 
-lapply(c(1,2,4,5), # showing 4 types of plots
-       function(x) plot(first_model, 
-                        which = x, 
-                        # labels.id = 1:nrow(X.train_red),
-                        cook.levels = c(0.05, 0.1))) %>% invisible()
 
