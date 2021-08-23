@@ -8,8 +8,8 @@ library(GGally)
 library(corrplot)
 library(MASS)
 library(cowplot)
-
-#-----------------------------------------------DATA SOURCE AND PREPROCESSING----------------------------------------------------------------
+RNGkind(sample.kind = "Rounding")
+#****************************************************DATA SOURCE AND PREPROCESSING*******************************************************
 
 #read in data and separate out the semicolons, make 1st row a header, omit any missing values. 
 redwine_Data <- read.csv(file = "http://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv", header = TRUE, sep = ";") %>%
@@ -22,7 +22,7 @@ str(redwine_Data)
 summary(redwine_Data)
 
 
-#----------------------------------------------EXPLORATORY DATA ANALYSIS-----------------------------------------
+#*****************************************************EXPLORATORY DATA ANALYSIS*****************************************************
 
 #making histograms/density plots to visualize spread of data for each predictor
 
@@ -78,8 +78,7 @@ plot_grid(hist1, hist2, hist3, hist4)
 plot_grid(hist5, hist6, hist7, hist8)
 plot_grid(hist9, hist10, hist11, hist12)
 #density plots show that most distributions or positively skewed. pH and density are normally distributed. 
-
-
+#----------------------------------------------------------------------------------------------------
 
 #QQ plots
 qqplot_pH <- ggplot(redwine_Data, aes(sample=pH)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
@@ -121,7 +120,7 @@ plot_grid(qqplot_free.sulfur.dioxide, qqplot_total.sulfur.dioxide, qqplot_sulpha
 #QQ plots of pH and density are shown to have near normal distribution. For the other variables, their data is close to normal
 #distribution within 2 standard deviations of the mean but become right skewed. Extremely positive skewed data is not desirable
 #since high levels can cause misleading data. For our case the data is not too positively skewed. 
-
+#-----------------------------------------------------------------------------------------------------------
 
 
 #Create boxplots of each predictor vs quality
@@ -184,6 +183,7 @@ summary(model1)
 #baseline model has adjusted R-squared of 0.3561
 par(mfrow=c(2,2))
 plot(model1)
+#----------------------------------------------------------------------------------------------------
 
 #From the diagnostic plots, we can see some outliers which we can remove to make our model a better fit. We use
 #cooks.distance function on our model to filter out values greater than 4x the mean. We plot the output of 
@@ -268,6 +268,7 @@ summary_skew
 #********************************************FEATURE SELECTION*********************************************
 
 #find correlations, use cor() to produce matrix and corrplot to display a plot 
+par(mfrow=c(1,1))
 cor(redwine_Data2)
 corrplot(cor(redwine_Data2), method="color",addCoef.col = "black", diag=FALSE,number.cex=0.7)
 #density and fixed.acidity (0.68), fixed.acidity and citric acid (0.68), fixed.acidity and pH (-0.69), free.sulfur.dioxide
@@ -295,13 +296,48 @@ vif(model2)
 #that they are highly correlated We'll try a model without fixed.acidity
 model3 <- lm(quality~.-fixed.acidity, data=redwine_training)
 vif(model3)
-#Without fixed.acidity, VIF values of other variables have decreased, especially density. 
+#Without fixed.acidity, VIF values of other variables have decreased, especially density. We can consider 
+#removing density as well.
 #----------------------------------------------------------------------------------------------------
 
-#Use forward stepwise regression to find variables which make best model
+#choosing model size using k-fold cross validation
 library(leaps)
-regfit.fwd <- regsubsets(quality~., data=redwine_training, nvmax=11, method="forward")
-reg.fwd.summary <- summary(regfit.fwd)
+k=10
+set.seed(1)
+folds=sample (1:k,nrow(redwine_Data2),replace=TRUE)
+cv.errors=matrix (NA,k,11, dimnames =list(NULL , paste (1:11) ))
+
+for(j in 1:k){
+  best.fit=regsubsets (quality~.,data=redwine_Data2[folds!=j,],
+                         nvmax=11)
+  for(i in 1:11){
+     pred=predict (best.fit ,redwine_Data2[folds ==j,],id=i)
+     cv.errors[j,i]= mean( ( redwine_Data2$quality[ folds==j]-pred)^2)
+    }
+}
+mean.cv.errors=apply(cv.errors ,2, mean)
+mean.cv.errors
+par(mfrow=c(1,1))
+plot(mean.cv.errors ,type="b")
+reg.best=regsubsets (quality~.,data=redwine_Data2 , nvmax=11)
+coef(reg.best ,7)
+#Based on plot, we will use 7 variables instead of 11. They both have near identical values but 7 variables is simpler than 11. 
+#These are the variables we will be using for all models. These variables chosen are in argeement with what we found in our
+#correlation ranking and VIF findings. 
+#1. volatile.acidity
+#2. chlorides
+#3. free.sulfur.dioxide
+#4. total.sulfur.dioxide
+#5. pH
+#6. sulphates
+#7. alcohol
+
+
+#***************************************************MODELING******************************************************************
+
+#Multiple Linear Regression
+
+#Will add code to this
 
 #Linear regression is an analysis that assesses whether one or more predictor variables explain the dependent (criterion) variable.
 #The regression has five key assumptions:
@@ -312,3 +348,8 @@ reg.fwd.summary <- summary(regfit.fwd)
 #Homoscedasticity
 
 
+#----------------------------------------------------------------------------------------------------
+
+#RandomForest
+
+#Will add code to this
