@@ -8,6 +8,7 @@ library(GGally)
 library(corrplot)
 library(MASS)
 library(cowplot)
+library(caret)
 RNGkind(sample.kind = "Rounding")
 #****************************************************DATA SOURCE AND PREPROCESSING*******************************************************
 
@@ -282,6 +283,7 @@ head(rankQuality[order(rankQuality, decreasing=TRUE)],12)
 #----------------------------------------------------------------------------------------------------
 #split dataset into training and testing, 70:30 split. Leaves 1119 obs for training and 381 obs for testing.
 redwine_training <- sample_frac(tbl=redwine_Data2, replace = FALSE, size = 0.80)
+redwine_training$quality
 redwine_test <- anti_join(redwine_Data2, redwine_training)
 
 
@@ -334,11 +336,48 @@ coef(reg.best ,7)
 
 
 #***************************************************MODELING******************************************************************
-
+#Need RMSE, R2, MAE, MSE
 #Multiple Linear Regression
+multi_winefit <- lm(quality~volatile.acidity + chlorides + free.sulfur.dioxide + total.sulfur.dioxide + pH + sulphates + alcohol, 
+                    data=redwine_training)
+#calculate MSE, obtained 0.3337101
+mean(multi_winefit$residuals^2)
+summary(multi_winefit)
+#Combining the results of or EDA, correlation, and feature selection we have chosen to prioritize seven variables out of 
+#We used the 7 variables chosen by stepwise k-fold cross validation regression for the model of multiple linear regression. 
+#Multiple linear regression is a simple and good basis model to compare our other models to predict quality. The chosen variables
+#are highly correlated to our dependent quality variable and their p-value shows their statistical significance. 
 
-#Will add code to this
+#Performance using train dataset
+multi_pred_training <- predict(multi_winefit, redwine_training) #predict with training dataset
+multi_R2_training <- R2(multi_pred_training, redwine_training$quality) #R-squared 0.302033
+multi_RMSE_training <- RMSE(multi_pred_training, redwine_training$quality) #Root Mean Squared Error 0.577676
+multi_MAE_training <- MAE(multi_pred_training, redwine_training$quality) #Mean Absolute Error 0.459549
 
+#Performance using test dataset
+multi_pred_test <- predict(multi_winefit, redwine_test) #predict with training dataset
+multi_R2_test <- R2(multi_pred_test, redwine_test$quality) #R-squared 0.408954
+multi_RMSE_test <- RMSE(multi_pred_test, redwine_test$quality) #Root Mean Squared Error 0.559561
+multi_MAE_test <- MAE(multi_pred_test, redwine_test$quality) #Mean Absolute Error 0.445094
+
+#Make a confusion matrix
+multi_pred_round <- round(multi_pred_test) #round off values to whole numbers for confusion matrix
+multi_confusion_matrix <- table(predicted = multi_pred_round, actual = redwine_test$quality)
+multi_confusion_matrix
+#accuracy of the model on test data
+mean(multi_pred_round==redwine_test$quality) #accuracy is 61%
+
+
+#train error and test error
+#format
+#model.fit(X_train_scaled, y_train)
+#pred = model.predict(X_test_scaled)
+#print('------------- {} default -------------'.format(name))
+#print('R^2 score - ', r2_score(y_test, pred))
+#print('MSE score - ', mean_squared_error(y_test, pred))
+#print('MAE score - ', mean_absolute_error(y_test, pred))
+
+#----------------------------------------------------------------------------------------------------
 #Linear regression is an analysis that assesses whether one or more predictor variables explain the dependent (criterion) variable.
 #The regression has five key assumptions:
 #Linear relationship
