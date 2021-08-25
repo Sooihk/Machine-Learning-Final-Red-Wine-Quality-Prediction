@@ -1,5 +1,5 @@
 ---
-title: "Machine Learning Final"
+title: "Machine Learning Final Project"
 author: "Sooihk Ro"
 date: "8/13/2021"
 output: 
@@ -15,6 +15,14 @@ params:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+## Machine Learning Problem Description
+The quality of a wine is important for the consumers of wine as well as the producers of wine. Like consumers of all other products, consumers of wine want to purchase good quality wines for the lowest price possible. Currently, the only way for consumers to get such information on quality of wine is through reviews by wine experts or in wine community, which can be quite subjective and inaccurate. In addition, many wine producers would be interested in a method to determine the quality of wine easily and accurately since the traditional way of measuring wine quality that includes wine tasting by experts, is very time consuming and since they can use such information to improve the quality of their wines and to improve profitability. With the world’s wine market, which is currently at around $330 billion, growing at a rapid pace, the demand for an easy, quick, accurate and objective method to determine the quality of wine is growing fast as well. The overall wine quality in the market can improve significantly if an accurate and quick prediction of wine quality through machine learning techniques becomes a reality.
+
+Some researchers have used machine learning techniques to assess wine quality, but there is still a large room for improvement. Gupta et al. predicted the quality of wine using linear regression, NN and SVM using 11 different physiochemical characteristics using a collection of white and red wine data set (4898 white wine and 1599 red wine samples). Beltran et al. predicted the quality of wine using SVM, neutral network and LDA to classify Chilean wine using wine aroma chromatogram data using 111 wine data set. Even though there are many research papers available online on this topic, no current model provides a universally accepted machine learning model. 
+
+In this paper, a regression model is going to be built to quantify the nature of the relationship between the output (wine quality) and multiple input variables (from physiochemical tests including pH, alcohol percentage present in wine and amount of sugar left after fermentation). 
+
 
 ## R Markdown
 
