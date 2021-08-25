@@ -9,6 +9,8 @@ library(corrplot)
 library(MASS)
 library(cowplot)
 library(caret)
+library(car)
+library(leaps)
 RNGkind(sample.kind = "Rounding")
 #****************************************************DATA SOURCE AND PREPROCESSING*******************************************************
 
@@ -304,16 +306,26 @@ vif(model3)
 
 #choosing model size using k-fold cross validation
 library(leaps)
+#write predict method to use regsubsets() since there is no predict() method for regsubsets()
+predict.regsubsets =function (object , newdata ,id ,...){
+  form=as.formula (object$call [[2]])
+  mat=model.matrix(form ,newdata )
+  coefi=coef(object ,id=id)
+  xvars=names(coefi)
+  mat[,xvars]%*%coefi
+}
+
+
+reg.best=regsubsets(quality~.,data=redwine_Data2 , nvmax=11)
 k=10
 set.seed(1)
 folds=sample (1:k,nrow(redwine_Data2),replace=TRUE)
 cv.errors=matrix (NA,k,11, dimnames =list(NULL , paste (1:11) ))
 
 for(j in 1:k){
-  best.fit=regsubsets (quality~.,data=redwine_Data2[folds!=j,],
-                         nvmax=11)
+  best.fit=regsubsets(quality~.,data=redwine_Data2[folds!=j,], nvmax=11)
   for(i in 1:11){
-     pred=predict (best.fit ,redwine_Data2[folds ==j,],id=i)
+     pred=predict(best.fit ,redwine_Data2[folds ==j,],id=i)
      cv.errors[j,i]= mean( ( redwine_Data2$quality[ folds==j]-pred)^2)
     }
 }
@@ -321,7 +333,7 @@ mean.cv.errors=apply(cv.errors ,2, mean)
 mean.cv.errors
 par(mfrow=c(1,1))
 plot(mean.cv.errors ,type="b")
-reg.best=regsubsets (quality~.,data=redwine_Data2 , nvmax=11)
+
 coef(reg.best ,7)
 #Based on plot, we will use 7 variables instead of 11. They both have near identical values but 7 variables is simpler than 11. 
 #These are the variables we will be using for all models. These variables chosen are in argeement with what we found in our
