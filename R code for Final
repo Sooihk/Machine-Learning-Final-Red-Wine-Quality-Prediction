@@ -402,5 +402,62 @@ mean(multi_pred_round==redwine_test$quality) #accuracy is 61%
 #----------------------------------------------------------------------------------------------------
 
 #RandomForest
+library(randomForest)
+set.seed(3)
+rf.redwine <- randomForest(quality~volatile.acidity + chlorides + free.sulfur.dioxide + total.sulfur.dioxide + 
+                             pH + sulphates + alcohol, data=redwine_training, mtry = 7/3, importance=TRUE)
+#rf.redwine <- randomForest(quality~., data=redwine_training, mtry = 11/3, importance=TRUE)
+#summary of model
+print(rf.redwine)
 
-#Will add code to this
+#variable importance plot,The former is based upon the mean decrease of accuracy in predictions on the
+#out of bag samples when a given variable is excluded from the model. The latter is a measure
+#of the total decrease in node impurity that results from splits over that variable, averaged over all trees
+varImpPlot(rf.redwine)
+
+#Evaluation
+#Performance using train dataset
+rf_pred_training <- predict(rf.redwine, redwine_training) #predict with training dataset
+rf_R2_training <- R2(rf_pred_training, redwine_training$quality) #R-squared 0.922813
+rf_RMSE_training <- RMSE(rf_pred_training, redwine_training$quality) #Root Mean Squared Error 0.244948
+rf_MAE_training <- MAE(rf_pred_training, redwine_training$quality) #Mean Absolute Error 0.184937
+
+#Performance using test dataset
+rf_pred_test <- predict(rf.redwine, newdata=redwine_test) #predict with test dataset
+rf_R2_test <- R2(rf_pred_test, redwine_test$quality) #R-squared 0.422745
+rf_RMSE_test <- RMSE(rf_pred_test, redwine_test$quality) #Root Mean Squared Error 0.571215
+rf_MAE_test <- MAE(rf_pred_test, redwine_test$quality) #Mean Absolute Error 0.454272
+
+rf_R2_test #R-squared 0.422745
+rf_RMSE_test  #Root Mean Squared Error 0.571215
+rf_MAE_test 
+#Make a confusion matrix
+rf_pred_round <- round(rf_pred_test) #round off values to whole numbers for confusion matrix
+rf_confusion_matrix <- table(predicted = rf_pred_round, actual = redwine_test$quality)
+rf_confusion_matrix
+#accuracy of the model on test data
+mean(rf_pred_round==redwine_test$quality) #accuracy is 63%
+
+#----------------------------------------------------------------------------------------------------
+
+#boosting
+set.seed(3)
+boost.wine <- gbm(quality~volatile.acidity + chlorides + free.sulfur.dioxide + total.sulfur.dioxide + 
+                  pH + sulphates + alcohol, data=redwine_training, distribution="gaussian", 
+                  n.trees=50, interaction.depth=4, cv.folds=5, shrinkage=0.2, verbose = F)
+prefcv <- gbm.perf(boost.wine)
+prefcv
+#summary(boost.wine)
+red.boost <- predict(boost.wine, newdata=redwine_test, n.trees=prefcv)
+boost_R2_test <- R2(red.boost, redwine_test$quality)
+boost_RMSE_test <- RMSE(red.boost, redwine_test$quality)
+boost_MAE_test <- MAE(red.boost, redwine_test$quality)
+
+boost_MAE_test 
+boost_R2_test
+boost_RMSE_test
+
+red.boost.round <- round(red.boost)
+boost_confusion_matrix <- table(predicted = red.boost.round, actual = redwine_test$quality)
+boost_confusion_matrix
+mean(red.boost.round==redwine_test$quality)
