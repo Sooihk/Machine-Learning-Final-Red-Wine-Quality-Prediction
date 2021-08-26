@@ -218,7 +218,16 @@ summary(model2)
 par(mfrow=c(2,2))
 plot(model2)
 #The new diagnostic plots have improved as well. The qqplot shows better normal distribution. The Residuals vs Leverage
-#plot does not have any outstanding points with great leverage. 
+#plot does not have any outstanding points with great leverage. Shows we can use linear regression with 4 assumptions.
+
+#Linear regression is an analysis that assesses whether one or more predictor variables explain the dependent (criterion) variable.
+#The regression has five key assumptions:
+#Linear relationship
+#Multivariate normality
+#No or little multicollinearity
+#No auto-correlation
+#Homoscedasticity
+
 
 skew1 <- skewness(redwine_Data$fixed.acidity)
 skew1 <- append(skew1, skewness(redwine_Data$volatile.acidity))
@@ -284,8 +293,9 @@ head(rankQuality[order(rankQuality, decreasing=TRUE)],12)
 
 #----------------------------------------------------------------------------------------------------
 #split dataset into training and testing, 70:30 split. Leaves 1119 obs for training and 381 obs for testing.
+
+set.seed(3)
 redwine_training <- sample_frac(tbl=redwine_Data2, replace = FALSE, size = 0.80)
-redwine_training$quality
 redwine_test <- anti_join(redwine_Data2, redwine_training)
 
 
@@ -350,10 +360,10 @@ coef(reg.best ,7)
 #***************************************************MODELING******************************************************************
 #Need RMSE, R2, MAE, MSE
 #Multiple Linear Regression
+set.seed(3)
 multi_winefit <- lm(quality~volatile.acidity + chlorides + free.sulfur.dioxide + total.sulfur.dioxide + pH + sulphates + alcohol, 
                     data=redwine_training)
-#calculate MSE, obtained 0.3337101
-mean(multi_winefit$residuals^2)
+
 summary(multi_winefit)
 #Combining the results of or EDA, correlation, and feature selection we have chosen to prioritize seven variables out of 
 #We used the 7 variables chosen by stepwise k-fold cross validation regression for the model of multiple linear regression. 
@@ -361,48 +371,29 @@ summary(multi_winefit)
 #are highly correlated to our dependent quality variable and their p-value shows their statistical significance. 
 
 #Performance using train dataset
-multi_pred_training <- predict(multi_winefit, redwine_training) #predict with training dataset
-multi_R2_training <- R2(multi_pred_training, redwine_training$quality) #R-squared 0.302033
-multi_RMSE_training <- RMSE(multi_pred_training, redwine_training$quality) #Root Mean Squared Error 0.577676
-multi_MAE_training <- MAE(multi_pred_training, redwine_training$quality) #Mean Absolute Error 0.459549
+multi_R2_training <- R2(multi_winefit$fitted.values, redwine_training$quality) #R-squared 0.391984
+multi_RMSE_training <- RMSE(multi_winefit$fitted.values, redwine_training$quality) #Root Mean Squared Error 0.581757
+multi_MAE_training <- MAE(multi_winefit$fitted.values, redwine_training$quality) #Mean Absolute Error 0.462793
+
 
 #Performance using test dataset
-multi_pred_test <- predict(multi_winefit, redwine_test) #predict with training dataset
-multi_R2_test <- R2(multi_pred_test, redwine_test$quality) #R-squared 0.408954
-multi_RMSE_test <- RMSE(multi_pred_test, redwine_test$quality) #Root Mean Squared Error 0.559561
-multi_MAE_test <- MAE(multi_pred_test, redwine_test$quality) #Mean Absolute Error 0.445094
+multi_pred_test <- predict(multi_winefit, redwine_test) #predict with test dataset
+multi_R2_test <- R2(multi_pred_test, redwine_test$quality) #R-squared 0.493984
+multi_RMSE_test <- RMSE(multi_pred_test, redwine_test$quality) #Root Mean Squared Error 0.539477
+multi_MAE_test <- MAE(multi_pred_test, redwine_test$quality) #Mean Absolute Error 0.434611
 
 #Make a confusion matrix
 multi_pred_round <- round(multi_pred_test) #round off values to whole numbers for confusion matrix
 multi_confusion_matrix <- table(predicted = multi_pred_round, actual = redwine_test$quality)
 multi_confusion_matrix
 #accuracy of the model on test data
-mean(multi_pred_round==redwine_test$quality) #accuracy is 61%
-
-
-#train error and test error
-#format
-#model.fit(X_train_scaled, y_train)
-#pred = model.predict(X_test_scaled)
-#print('------------- {} default -------------'.format(name))
-#print('R^2 score - ', r2_score(y_test, pred))
-#print('MSE score - ', mean_squared_error(y_test, pred))
-#print('MAE score - ', mean_absolute_error(y_test, pred))
-
-#----------------------------------------------------------------------------------------------------
-#Linear regression is an analysis that assesses whether one or more predictor variables explain the dependent (criterion) variable.
-#The regression has five key assumptions:
-#Linear relationship
-#Multivariate normality
-#No or little multicollinearity
-#No auto-correlation
-#Homoscedasticity
-
+mean(multi_pred_round==redwine_test$quality) #accuracy is 65%
 
 #----------------------------------------------------------------------------------------------------
 
 #RandomForest
 library(randomForest)
+
 set.seed(3)
 rf.redwine <- randomForest(quality~volatile.acidity + chlorides + free.sulfur.dioxide + total.sulfur.dioxide + 
                              pH + sulphates + alcohol, data=redwine_training, mtry = 7/3, importance=TRUE)
@@ -417,30 +408,27 @@ varImpPlot(rf.redwine)
 
 #Evaluation
 #Performance using train dataset
-rf_pred_training <- predict(rf.redwine, redwine_training) #predict with training dataset
-rf_R2_training <- R2(rf_pred_training, redwine_training$quality) #R-squared 0.922813
-rf_RMSE_training <- RMSE(rf_pred_training, redwine_training$quality) #Root Mean Squared Error 0.244948
-rf_MAE_training <- MAE(rf_pred_training, redwine_training$quality) #Mean Absolute Error 0.184937
+rf_R2_training <- R2(rf.redwine$predicted, redwine_training$quality) #R-squared 0.5143944
+rf_RMSE_training <- RMSE(rf.redwine$predicted, redwine_training$quality) #Root Mean Squared Error 0.5216485
+rf_MAE_training <- MAE(rf.redwine$predicted, redwine_training$quality) #Mean Absolute Error 0.3955276
 
 #Performance using test dataset
 rf_pred_test <- predict(rf.redwine, newdata=redwine_test) #predict with test dataset
-rf_R2_test <- R2(rf_pred_test, redwine_test$quality) #R-squared 0.422745
-rf_RMSE_test <- RMSE(rf_pred_test, redwine_test$quality) #Root Mean Squared Error 0.571215
-rf_MAE_test <- MAE(rf_pred_test, redwine_test$quality) #Mean Absolute Error 0.454272
+rf_R2_test <- R2(rf_pred_test, redwine_test$quality) #R-squared 0.50846
+rf_RMSE_test <- RMSE(rf_pred_test, redwine_test$quality) #Root Mean Squared Error 0.531615
+rf_MAE_test <- MAE(rf_pred_test, redwine_test$quality) #Mean Absolute Error 0.423087
 
-rf_R2_test #R-squared 0.422745
-rf_RMSE_test  #Root Mean Squared Error 0.571215
-rf_MAE_test 
 #Make a confusion matrix
 rf_pred_round <- round(rf_pred_test) #round off values to whole numbers for confusion matrix
 rf_confusion_matrix <- table(predicted = rf_pred_round, actual = redwine_test$quality)
 rf_confusion_matrix
 #accuracy of the model on test data
-mean(rf_pred_round==redwine_test$quality) #accuracy is 63%
+mean(rf_pred_round==redwine_test$quality) #accuracy is 67%
 
 #----------------------------------------------------------------------------------------------------
 
 #boosting
+library(gbm)
 set.seed(3)
 boost.wine <- gbm(quality~volatile.acidity + chlorides + free.sulfur.dioxide + total.sulfur.dioxide + 
                   pH + sulphates + alcohol, data=redwine_training, distribution="gaussian", 
