@@ -1,16 +1,17 @@
-library(ggplot2)
+library(ggplot2) #for visualization
 library(lubridate)
 library(zoo)
-library(dplyr)
-library(scales)
-library(tidyverse)
-library(GGally)
-library(corrplot)
-library(MASS)
-library(cowplot)
-library(caret)
+library(dplyr) #data manipulation
+library(scales) #map data to aes
+library(tidyverse) #data manipulation
+library(GGally) #helper of ggplot2
+library(corrplot) #
+library(MASS) #data functions
+library(cowplot) #data visualization
+library(caret) #functions for training and plotting regression models
 library(car)
 library(leaps)
+library(moments)
 RNGkind(sample.kind = "Rounding")
 #****************************************************DATA SOURCE AND PREPROCESSING*******************************************************
 
@@ -85,37 +86,37 @@ plot_grid(hist9, hist10, hist11, hist12)
 
 #QQ plots
 qqplot_pH <- ggplot(redwine_Data, aes(sample=pH)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
-  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="QQ plot pH") + theme_cowplot()
+  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="pH") + theme_cowplot()
 
 qqplot_density <- ggplot(redwine_Data, aes(sample=density)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
-  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="QQ plot density") + theme_cowplot()
+  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="density") + theme_cowplot()
 
 qqplot_alcohol <- ggplot(redwine_Data, aes(sample=alcohol)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
-  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="QQ plot alcohol") + theme_cowplot()
+  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="alcohol") + theme_cowplot()
 
 qqplot_chlorides <- ggplot(redwine_Data, aes(sample=chlorides)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
-  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="QQ plot chlorides") + theme_cowplot()
+  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="chlorides") + theme_cowplot()
 
 qqplot_fixed.acidity <- ggplot(redwine_Data, aes(sample=fixed.acidity)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
-  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="QQ plot fixed.acidity") + theme_cowplot()
+  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="fixed.acidity") + theme_cowplot()
 
 qqplot_citric.acid <- ggplot(redwine_Data, aes(sample=citric.acid)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
-  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="QQ plot citric.acid") + theme_cowplot()
+  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="citric.acid") + theme_cowplot()
 
 qqplot_volatile.acidity <- ggplot(redwine_Data, aes(sample=volatile.acidity)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
-  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="QQ plot volatile.acidity") + theme_cowplot()
+  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="volatile.acidity") + theme_cowplot()
 
 qqplot_residual.sugar <- ggplot(redwine_Data, aes(sample=residual.sugar)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
-  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="QQ plot residual.sugar") + theme_cowplot()
+  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="residual.sugar") + theme_cowplot()
 
 qqplot_free.sulfur.dioxide <- ggplot(redwine_Data, aes(sample=free.sulfur.dioxide)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
-  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="QQ plot free.sulfur.dioxide") + theme_cowplot()
+  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="free.sulfur.dioxide") + theme_cowplot()
 
 qqplot_total.sulfur.dioxide <- ggplot(redwine_Data, aes(sample=total.sulfur.dioxide)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
-  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="QQ plot total.sulfur.dioxide") + theme_cowplot()
+  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="total.sulfur.dioxide") + theme_cowplot()
 
 qqplot_sulphates <- ggplot(redwine_Data, aes(sample=sulphates)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
-  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="QQ plot sulphates") + theme_cowplot()
+  labs(x="Theoretical Quantiles", y="Sample Quantiles", title="sulphates") + theme_cowplot()
 
 plot_grid(qqplot_pH, qqplot_density, qqplot_alcohol, qqplot_fixed.acidity)
 plot_grid(qqplot_citric.acid, qqplot_chlorides, qqplot_volatile.acidity, qqplot_residual.sugar)
@@ -198,7 +199,7 @@ abline(h=4*mean(cooksD, na.rm=TRUE), col = "blue", lwd = 2)
 
 par(mfrow=c(3,2))
 plot(lm(quality~alcohol, data=redwine_Data), which=c(5), main="alcohol")
-plot(lm(quality~citric.acid, data=redwine_Data), which=c(5), main="citric.acid")
+plot(lm(quality~citric.acid, data=redwine_Data), which=c(5), main="ctric.acid")
 plot(lm(quality~total.sulfur.dioxide, data=redwine_Data), which=c(5), main="total.sulfur.dioxide")
 plot(lm(quality~pH, data=redwine_Data), which=c(5), main="pH")
 plot(lm(quality~chlorides, data=redwine_Data), which=c(5), main="chlorides")
@@ -395,16 +396,17 @@ mean(multi_pred_round==redwine_test$quality) #accuracy is 65%
 library(randomForest)
 
 set.seed(3)
-rf.redwine <- randomForest(quality~volatile.acidity + chlorides + free.sulfur.dioxide + total.sulfur.dioxide + 
-                             pH + sulphates + alcohol, data=redwine_training, mtry = 7/3, importance=TRUE)
-#rf.redwine <- randomForest(quality~., data=redwine_training, mtry = 11/3, importance=TRUE)
+#rf.redwine <- randomForest(quality~volatile.acidity + chlorides + free.sulfur.dioxide + total.sulfur.dioxide + 
+   #                          pH + sulphates + alcohol, data=redwine_training, mtry = 7/3, importance=TRUE)
+rf.redwine <- randomForest(quality~., data=redwine_training, mtry = 11/3, importance=TRUE)
 #summary of model
 print(rf.redwine)
 
 #variable importance plot,The former is based upon the mean decrease of accuracy in predictions on the
 #out of bag samples when a given variable is excluded from the model. The latter is a measure
 #of the total decrease in node impurity that results from splits over that variable, averaged over all trees
-varImpPlot(rf.redwine)
+par(mfrow=c(1,1))
+varImpPlot(rf.redwine, type=1, main="Accuracy Decrease")
 
 #Evaluation
 #Performance using train dataset
@@ -427,25 +429,25 @@ mean(rf_pred_round==redwine_test$quality) #accuracy is 67%
 
 #----------------------------------------------------------------------------------------------------
 
-#boosting
-library(gbm)
-set.seed(3)
-boost.wine <- gbm(quality~volatile.acidity + chlorides + free.sulfur.dioxide + total.sulfur.dioxide + 
-                  pH + sulphates + alcohol, data=redwine_training, distribution="gaussian", 
-                  n.trees=50, interaction.depth=4, cv.folds=5, shrinkage=0.2, verbose = F)
-prefcv <- gbm.perf(boost.wine)
-prefcv
-#summary(boost.wine)
-red.boost <- predict(boost.wine, newdata=redwine_test, n.trees=prefcv)
-boost_R2_test <- R2(red.boost, redwine_test$quality)
-boost_RMSE_test <- RMSE(red.boost, redwine_test$quality)
-boost_MAE_test <- MAE(red.boost, redwine_test$quality)
-
-boost_MAE_test 
-boost_R2_test
-boost_RMSE_test
-
-red.boost.round <- round(red.boost)
-boost_confusion_matrix <- table(predicted = red.boost.round, actual = redwine_test$quality)
-boost_confusion_matrix
-mean(red.boost.round==redwine_test$quality)
+# #boosting
+# library(gbm)
+# set.seed(3)
+# boost.wine <- gbm(quality~volatile.acidity + chlorides + free.sulfur.dioxide + total.sulfur.dioxide +
+#                 pH + sulphates + alcohol, data=redwine_training, distribution="gaussian",
+#                  n.trees=50, interaction.depth=4, cv.folds=5, shrinkage=0.2, verbose = F)
+# prefcv <- gbm.perf(boost.wine)
+# prefcv
+# summary(boost.wine)
+# red.boost <- predict(boost.wine, newdata=redwine_test, n.trees=prefcv)
+# boost_R2_test <- R2(red.boost, redwine_test$quality)
+# boost_RMSE_test <- RMSE(red.boost, redwine_test$quality)
+# boost_MAE_test <- MAE(red.boost, redwine_test$quality)
+# 
+# boost_MAE_test 
+# boost_R2_test
+# boost_RMSE_test
+# 
+# red.boost.round <- round(red.boost)
+# boost_confusion_matrix <- table(predicted = red.boost.round, actual = redwine_test$quality)
+# boost_confusion_matrix
+# mean(red.boost.round==redwine_test$quality)
