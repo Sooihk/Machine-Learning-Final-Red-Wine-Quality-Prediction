@@ -359,6 +359,7 @@ coef(reg.best ,7)
 
 #***************************************************MODELING******************************************************************
 #Need RMSE, R2, MAE, MSE
+library(modelr)
 #Multiple Linear Regression
 set.seed(3)
 multi_winefit <- lm(quality~volatile.acidity + chlorides + free.sulfur.dioxide + total.sulfur.dioxide + pH + sulphates + alcohol, 
@@ -371,23 +372,90 @@ summary(multi_winefit)
 #are highly correlated to our dependent quality variable and their p-value shows their statistical significance. 
 
 #Performance using train dataset
-multi_R2_training <- R2(multi_winefit$fitted.values, redwine_training$quality) #R-squared 0.391984
-multi_RMSE_training <- RMSE(multi_winefit$fitted.values, redwine_training$quality) #Root Mean Squared Error 0.581757
-multi_MAE_training <- MAE(multi_winefit$fitted.values, redwine_training$quality) #Mean Absolute Error 0.462793
+multi_R2_training <- rsquare(multi_winefit, redwine_training) #R-squared 0.391984
+multi_RMSE_training <- rmse(multi_winefit, redwine_training) #Root Mean Squared Error 0.581757
+multi_MAE_training <- mae(multi_winefit, redwine_training) #Mean Absolute Error 0.462793
 
 
 #Performance using test dataset
-multi_pred_test <- predict(multi_winefit, redwine_test) #predict with test dataset
-multi_R2_test <- R2(multi_pred_test, redwine_test$quality) #R-squared 0.493984
-multi_RMSE_test <- RMSE(multi_pred_test, redwine_test$quality) #Root Mean Squared Error 0.539477
-multi_MAE_test <- MAE(multi_pred_test, redwine_test$quality) #Mean Absolute Error 0.434611
+multi_R2_test <- rsquare(multi_winefit, redwine_test) #R-squared 0.491427
+multi_RMSE_test <- rmse(multi_winefit, redwine_test) #Root Mean Squared Error 0.539477
+multi_MAE_test <- mae(multi_winefit, redwine_test) #Mean Absolute Error 0.434611
 
 #Make a confusion matrix
+multi_pred_test <- predict(multi_winefit, redwine_test) #predict with test dataset
 multi_pred_round <- round(multi_pred_test) #round off values to whole numbers for confusion matrix
 multi_confusion_matrix <- table(predicted = multi_pred_round, actual = redwine_test$quality)
 multi_confusion_matrix
 #accuracy of the model on test data
 mean(multi_pred_round==redwine_test$quality) #accuracy is 65%
+
+#----------------------------------------------------------------------------------------------------
+#LASSO
+library(glmnet)
+
+#prepare model matrix training and test sets
+xtrain <- model.matrix(quality~., redwine_training)[,-1]
+ytrain <- redwine_training$quality
+xtest <- model.matrix(quality~., redwine_test)[,-1]
+ytest <- redwine_test$quality
+
+set.seed(3)
+cv.lasso.wine <- cv.glmnet(xtrain, ytrain, alpha=1)
+plot(cv.lasso.wine)
+#obtain best lambda for least MSE
+bestlam <- cv.lasso.wine$lambda.min # 0.0006777187
+
+#model with best lambda
+lasso.best.wine <- glmnet(xtrain, ytrain, alpha=1, lambda=bestlam)
+coef(lasso.best.wine)
+
+#Performance metrics on train dataset
+lasso.pred2 <- predict(lasso.best.wine, xtrain)
+lasso_R2_winetrain <- cor(ytest, lasso.pred2)^2 #0.0.3953817
+lasso_MAE_winetrain <- mean(abs(ytest-lasso.pred2)) #0.4617966
+lasso_RMSE_winetrain <- sqrt(mean((ytest-lasso.pred2)^2)) #0.0.5801316
+
+#Performance metrics on test dataset
+lasso.pred <- predict(lasso.best.wine, xtest)
+lasso_R2_wine <- cor(ytest, lasso.pred)^2 #0.492290
+lasso_MAE_wine <- mean(abs(ytest-lasso.pred)) #0.4366197
+lasso_RMSE_wine <- sqrt(mean((ytest-lasso.pred)^2)) #0.5404831
+
+#Make a confusion matrix
+lasso_pred_round <- round(lasso.pred) #round off values to whole numbers for confusion matrix
+lasso_confusion_matrix <- table(predicted = lasso_pred_round, actual = redwine_test$quality)
+lasso_confusion_matrix
+#accuracy of the model on test data
+mean(lasso_pred_round==redwine_test$quality) #accuracy is 63%
+#----------------------------------------------------------------------------------------------------
+#Partial Least Squares
+library(pls)
+
+set.seed(3)
+pls.redwine <- plsr(quality~., data=redwine_training, scale=TRUE, validation="CV")
+summary(pls.redwine)
+validationplot(pls.redwine, val.type="MSEP")
+# we see through the summary and plot that lowest cross-validation error occurs when M=7(ncomp=7) partial
+#least squares directions are used. 
+
+#Performace using train dataset
+pls.R2.training <- rsquare(pls.redwine, redwine_training) #0.389671
+pls.RMSE.training <- rmse(pls.redwine, redwine_training) #0.583079
+pls.MAE.training <- mae(pls.redwine, redwine_training) #0.464885
+
+#Performace using test dataset
+pls.R2.test <- rsquare(pls.redwine, redwine_test) #0.491523
+pls.RMSE.test <- rmse(pls.redwine, redwine_test) #0.541014
+pls.MAE.test <- mae(pls.redwine, redwine_test) #0.435541
+
+pls_pred_test <- predict(pls.redwine, newdata=redwine_test, ncomp=7)
+pls_pred_round <- round(pls_pred_test)
+pls_confusion_matrix <- table(fitted.values = pls_pred_round, actual = redwine_test$quality)
+pls_confusion_matrix
+#accuracy of the model on test data
+mean(pls_pred_round==redwine_test$quality) #Accuracy is 63%
+
 
 #----------------------------------------------------------------------------------------------------
 
@@ -409,89 +477,31 @@ varImpPlot(rf.redwine, type=1, main="Accuracy Decrease")
 
 #Evaluation
 #Performance using train dataset
-rf_R2_training <- R2(rf.redwine$predicted, redwine_training$quality) #R-squared 0.509190
-rf_RMSE_training <- RMSE(rf.redwine$predicted, redwine_training$quality) #Root Mean Squared Error 0.523912
-rf_MAE_training <- MAE(rf.redwine$predicted, redwine_training$quality) #Mean Absolute Error 0.394347
+rf_R2_training <- rsquare(rf.redwine, redwine_training) #R-squared 0.509190
+rf_RMSE_training <- rmse(rf.redwine, redwine_training) #Root Mean Squared Error 0.523912
+rf_MAE_training <- mae(rf.redwine, redwine_training) #Mean Absolute Error 0.394347
 
 #Performance using test dataset
-rf_pred_test <- predict(rf.redwine, newdata=redwine_test) #predict with test dataset
-rf_R2_test <- R2(rf_pred_test, redwine_test$quality) #R-squared 0.523476
-rf_RMSE_test <- RMSE(rf_pred_test, redwine_test$quality) #Root Mean Squared Error 0.523476
-rf_MAE_test <- MAE(rf_pred_test, redwine_test$quality) #Mean Absolute Error 0.415944
+
+rf_R2_test <- rsquare(rf.redwine, redwine_test) #R-squared 0.525642
+rf_RMSE_test <- rmse(rf.redwine, redwine_test) #Root Mean Squared Error 0.523476
+rf_MAE_test <- mae(rf.redwine, redwine_test) #Mean Absolute Error 0.415944
 
 #Make a confusion matrix
+rf_pred_test <- predict(rf.redwine, newdata=redwine_test) #predict with test dataset
 rf_pred_round <- round(rf_pred_test) #round off values to whole numbers for confusion matrix
 rf_confusion_matrix <- table(predicted = rf_pred_round, actual = redwine_test$quality)
 rf_confusion_matrix
 #accuracy of the model on test data
 mean(rf_pred_round==redwine_test$quality) #accuracy is 67%
-#----------------------------------------------------------------------------------------------------
-#LASSO
-library(glmnet)
-library(plotmo) #need for plot_glmnet()
-grid=10^seq(10,-2, length =100)
-x <- model.matrix(quality~., redwine_Data2)[,-12]
-y <- redwine_Data2$quality
-
-xtrain <- as.matrix(redwine_training[,-12])
-xtest <- as.matrix(redwine_test[,-12])
-ytrain <- as.matrix(redwine_training$quality) 
-ytest <- as.matrix(redwine_test$quality)
-
-lasso.wine <- glmnet(x, y, alpha = 1, lambda=grid)
-summary(lasso.wine)
-plot_glmnet(lasso.wine)
-#We see in the plot as constraints are loosened, alcohol emerges first followed by, volatile.acidity, sulphates,
-#chlorides, pH, and citric.acid being the last. Some coefficents be will exactly zero.  
-
-set.seed(3)
-lasso.wine.cv <- cv.glmnet(x, y, alpha = 1)
-plot(lasso.wine.cv)
-#The plot shows us as the model MSE increases as the complexity of the mode decreases. The MSE stays low as long as 
-#there is at least 6 or 7 features in the model. 
-
-bestlam <- lasso.wine.cv$lambda.min # best lamda chosen by cross-validation
-lasso.pred <- predict(lasso.wine, xtest, s=bestlam)
-mean((lasso.pred - ytest)^2)
-
-out <- glmnet(x,y,alpha=1, lambda=grid)
-lasso.coef <- predict(out, type="coefficients", s=bestlam)[1:12,]
-lasso.coef # there are coefficent estimates at 0
-lasso.coef[lasso.coef!=0]
-#the lasso model with lamda chosen by cross validation contains 9 variables:
-#fixed.acidity, volatile.acidity, residual.sugar, chlorides, free.sulfur.dioxide, total.sulfur.dioxide,
-#density, pH, sulphates
-
-
-set.seed(3)
-lasso_winefit <- lm(quality~fixed.acidity+volatile.acidity+residual.sugar+chlorides+free.sulfur.dioxide+
-                      total.sulfur.dioxide+density+pH+sulphates, data=redwine_training)
-
-summary(lasso_winefit)
-
-#Performance using train dataset
-lasso_R2_training <- R2(lasso_winefit$fitted.values, redwine_training$quality) #R-squared 0.348608
-lasso_RMSE_training <- RMSE(lasso_winefit$fitted.values, redwine_training$quality) #Root Mean Squared Error 0.602151
-lasso_MAE_training <- MAE(lasso_winefit$fitted.values, redwine_training$quality) #Mean Absolute Error 0.485475
-
-
-#Performance using test dataset
-lasso_pred_test <- predict(lasso_winefit, redwine_test) #predict with test dataset
-lasso_R2_test <- R2(lasso_pred_test, redwine_test$quality) #R-squared 0.459664
-lasso_RMSE_test <- RMSE(lasso_pred_test, redwine_test$quality) #Root Mean Squared Error 0.560466
-lasso_MAE_test <- MAE(lasso_pred_test, redwine_test$quality) #Mean Absolute Error 0.451461
-
-#Make a confusion matrix
-lasso_pred_round <- round(lasso_pred_test) #round off values to whole numbers for confusion matrix
-lasso_confusion_matrix <- table(predicted = lasso_pred_round, actual = redwine_test$quality)
-lasso_confusion_matrix
-#accuracy of the model on test data
-mean(lasso_pred_round==redwine_test$quality) #accuracy is 64%
-
 
 #----------------------------------------------------------------------------------------------------
+
+
+
+
 # 
-# #boosting
+#boosting
 # library(gbm)
 # set.seed(3)
 # boost.wine <- gbm(quality~volatile.acidity + chlorides + free.sulfur.dioxide + total.sulfur.dioxide +
