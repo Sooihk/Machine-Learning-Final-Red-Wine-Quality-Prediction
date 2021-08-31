@@ -3,40 +3,463 @@ title: "Machine Learning Final Project"
 author: "Sooihk Ro"
 date: "8/13/2021"
 output: 
-  word_document:
+  bookdown::word_document2:
     toc: yes
-  pdf_document:
+    toc_depth: 3
+    number_sections: no
+    df_print: kable
+    fig_width: 4
+    fig_height: 3
+    fig_caption: yes
+  bookdown::pdf_document2:
     toc: yes
+    toc_depth: 3
+    number_sections: no
+    df_print: kable
+    fig_width: 4
+    fig_height: 3
+    fig_caption: yes
 params:
   'FALSE': 100
   d: !r Sys.Date()
+mainfont: Arial
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
 ```
 
-## Machine Learning Problem Description
-The quality of a wine is important for the consumers of wine as well as the producers of wine. Like consumers of all other products, consumers of wine want to purchase good quality wines for the lowest price possible. Currently, the only way for consumers to get such information on quality of wine is through reviews by wine experts or in wine community, which can be quite subjective and inaccurate. In addition, many wine producers would be interested in a method to determine the quality of wine easily and accurately since the traditional way of measuring wine quality that includes wine tasting by experts, is very time consuming and since they can use such information to improve the quality of their wines and to improve profitability. With the world’s wine market, which is currently at around $330 billion, growing at a rapid pace, the demand for an easy, quick, accurate and objective method to determine the quality of wine is growing fast as well. The overall wine quality in the market can improve significantly if an accurate and quick prediction of wine quality through machine learning techniques becomes a reality.
-
-Some researchers have used machine learning techniques to assess wine quality, but there is still a large room for improvement. Gupta et al. predicted the quality of wine using linear regression, NN and SVM using 11 different physiochemical characteristics using a collection of white and red wine data set (4898 white wine and 1599 red wine samples). Beltran et al. predicted the quality of wine using SVM, neutral network and LDA to classify Chilean wine using wine aroma chromatogram data using 111 wine data set. Even though there are many research papers available online on this topic, no current model provides a universally accepted machine learning model. 
-
-In this paper, a regression model is going to be built to quantify the nature of the relationship between the output (wine quality) and multiple input variables (from physiochemical tests including pH, alcohol percentage present in wine and amount of sugar left after fermentation). 
-
-
-## R Markdown
-
-
-```{r cars, echo=TRUE}
-summary(cars)
+```{r libraries, include=FALSE}
+library(ggplot2) #for visualization
+library(dplyr) #data manipulation
+library(scales) #map data to aes
+library(tidyverse) #data manipulation
+library(GGally) #helper of ggplot2
+library(corrplot) #
+library(MASS) #data functions
+library(cowplot) #data visualization
+library(caret) #functions for training and plotting regression models
+library(car)
+library(leaps)
+library(bookdown)
+library(moments)
+library(modelr)
+RNGkind(sample.kind = "Rounding")
 ```
 
-## Including Plots
+# Machine Learning Problem Description
+The quality of a wine is important for the consumers as well as the producers of wine. In the case of any other product, consumers of wine want to purchase good quality wines for the lowest price possible. Currently, the only way for consumers to get such information on quality of wine is through reviews by wine experts or from the wine community, which can be quite subjective and inaccurate. Many wine producers are interested in amethods to determine the quality of wine easily and accurately, which could increase the profit. Traditional methods of measuring quality, such as wine tasting by experts, are very time consuming. With the world’s wine market, currently prcied at around $330 billion, growing at a rapid pace, the demand for an easy, quick, accurate and objective method to determine the wine quality is in demand. The overall wine quality in the market can improve significantly if an accurate and quick prediction through machine learning becomes a reality.
+Some researchers have used machine learning techniques to assess wine quality, but there is still room for improvement. Gupta et al. predicted the quality of wine using linear regression, NN and SVM using 11 different physiochemical characteristics using a collection of white and red wine data set (4898 white wine and 1599 red wine samples). Beltran et al. predicted the quality of wine using SVM, neutral network and LDA to classify Chilean wine using wine aroma chromatogram data using 111 wine data set. Even though there are many research papers available online on this topic, no current model provides a universally accepted machine learning model.
+In this paper, a regression model is is built to quantify the nature of the relationship between the output (wine quality) and multiple input variables (from physiochemical tests including pH, alcohol percentage present in wine and amount of sugar left after fermentation).
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+# Data Source and Data Preprocessing
+Our data source is the red wine dataset avaiable from the UCI Machine Learning repository: https://archive.ics.uci.edu/ml/datasets/Wine+Quality. There are 11 input variables which are physicochemical properties with continuous values and a sequential output variable ranging from 1 to 10 based on sensory data(the median of 3 at least 3 wine expert’s evaluations). The dataset did not require cleaning and had no missing values. The following table shows the dimensions of the dataset and the classes of its variables:
+```{r dataload, echo=FALSE, message=FALSE, warning=FALSE}
+redwine_Data <- read.csv(file = "http://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv", header = TRUE, sep = ";") %>% na.omit()
+attach(redwine_Data)
+str(redwine_Data)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+# Exploratory Data Analysis
+
+```{r histograms, include=FALSE, message=FALSE, warning=FALSE}
+hist1 <- ggplot(redwine_Data, aes(x=alcohol)) + geom_histogram(aes(y=..density..),color="black", fill="white") + 
+  geom_density(alpha=.2, fill="#FF6666") + labs(x="Alcohol percentage", y="Density") + 
+  geom_vline(aes(xintercept=mean(alcohol)), color="blue", linetype="dashed", size=1)
+
+hist2 <- ggplot(redwine_Data, aes(x=pH)) + geom_histogram(aes(y=..density..),color="black", fill="white") + 
+  geom_density(alpha=.2, fill="#FF6666") + labs(x="pH", y="Density") + 
+  geom_vline(aes(xintercept=mean(pH)), color="blue", linetype="dashed", size=1)
+
+hist3 <- ggplot(redwine_Data, aes(x=fixed.acidity)) + geom_histogram(aes(y=..density..),color="black", fill="white") + 
+  geom_density(alpha=.2, fill="#FF6666") + labs(x="fixed acidity", y="Density") + 
+  geom_vline(aes(xintercept=mean(fixed.acidity)), color="blue", linetype="dashed", size=1)
+
+hist4 <- ggplot(redwine_Data, aes(x=volatile.acidity)) + geom_histogram(aes(y=..density..),color="black", fill="white") + 
+  geom_density(alpha=.2, fill="#FF6666") + labs(x="volatile acidity", y="Density") + 
+  geom_vline(aes(xintercept=mean(volatile.acidity)), color="blue", linetype="dashed", size=1)
+
+hist5 <- ggplot(redwine_Data, aes(x=citric.acid)) + geom_histogram(aes(y=..density..),color="black", fill="white") + 
+  geom_density(alpha=.2, fill="#FF6666") + labs(x="citric acid", y="Density") + 
+  geom_vline(aes(xintercept=mean(citric.acid)), color="blue", linetype="dashed", size=1)
+
+hist6 <- ggplot(redwine_Data, aes(x=residual.sugar)) + geom_histogram(aes(y=..density..),color="black", fill="white") + 
+  geom_density(alpha=.2, fill="#FF6666") + labs(x="residual sugar", y="Density") + 
+  geom_vline(aes(xintercept=mean(residual.sugar)), color="blue", linetype="dashed", size=1)
+
+hist7 <- ggplot(redwine_Data, aes(x=chlorides)) + geom_histogram(aes(y=..density..),color="black", fill="white") + 
+  geom_density(alpha=.2, fill="#FF6666") + labs(x="chlorides", y="Density") + 
+  geom_vline(aes(xintercept=mean(chlorides)), color="blue", linetype="dashed", size=1)
+
+hist8 <- ggplot(redwine_Data, aes(x=free.sulfur.dioxide)) + geom_histogram(aes(y=..density..),color="black", fill="white") + 
+  geom_density(alpha=.2, fill="#FF6666") + labs(x="free sulfur dioxide", y="Density") + 
+  geom_vline(aes(xintercept=mean(free.sulfur.dioxide)), color="blue", linetype="dashed", size=1)
+
+hist9 <- ggplot(redwine_Data, aes(x=total.sulfur.dioxide)) + geom_histogram(aes(y=..density..),color="black", fill="white") + 
+  geom_density(alpha=.2, fill="#FF6666") + labs(x="total sulfur dioxide", y="Density") + 
+  geom_vline(aes(xintercept=mean(total.sulfur.dioxide)), color="blue", linetype="dashed", size=1)
+
+hist10 <- ggplot(redwine_Data, aes(x=density)) + geom_histogram(aes(y=..density..),color="black", fill="white") + 
+  geom_density(alpha=.2, fill="#FF6666") + labs(x="density", y="Density") + 
+  geom_vline(aes(xintercept=mean(density)), color="blue", linetype="dashed", size=1)
+
+hist11 <- ggplot(redwine_Data, aes(x=sulphates)) + geom_histogram(aes(y=..density..),color="black", fill="white") + 
+  geom_density(alpha=.2, fill="#FF6666") + labs(x="sulphates", y="Density") + 
+  geom_vline(aes(xintercept=mean(sulphates)), color="blue", linetype="dashed", size=1)
+
+hist12 <- ggplot(redwine_Data, aes(x=quality)) + geom_histogram(aes(y=..density..),color="black", fill="white") + 
+  geom_density(alpha=.2, fill="#FF6666") + labs(x="quality", y="Density") + 
+  geom_vline(aes(xintercept=mean(quality)), color="blue", linetype="dashed", size=1)
+```
+We visually explore the dataset with density plots, QQ plots and boxplots to discern patterns, outliers, and data distribution to aid predicting the quality of red.
+
+The following density/histogram plots (Figure 1) were created to visualize the distribution of data:
+
+```{r density1, echo=FALSE, message=FALSE, warning=FALSE, fig.align="center",fig.width = 7, fig.height=4.5,fig.cap="Density/Histogram plots"}
+plot_grid(hist1, hist2, hist3, hist4, hist5, hist6, hist7, hist8, hist9, hist10, hist11, hist12)
+```
+
+In Figure \@ref(fig:density1). pH and density appear normally distributed. The rest of the variables have postively skewed distributions. The pH levels stay between 3 to 4. Variables chlorides and residual.sugar are concentrated around 0.1 and 2 respectively.
+
+QQ plots were created to help visually check if the predictors are normally distributed as models assume they are.
+
+```{r qqplot, echo=FALSE, warning=FALSE, message=FALSE, fig.align="center",fig.width = 9, fig.height=4.5, fig.cap="QQ plots, x: Theoretical Quantiles, y: Sample Quantiles"}
+qqplot_pH <- ggplot(redwine_Data, aes(sample=pH)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
+  labs(title="pH") + theme_cowplot()
+
+qqplot_density <- ggplot(redwine_Data, aes(sample=density)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
+  labs(title="density") + theme_cowplot()
+
+qqplot_alcohol <- ggplot(redwine_Data, aes(sample=alcohol)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
+  labs(title="alcohol") + theme_cowplot()
+
+qqplot_chlorides <- ggplot(redwine_Data, aes(sample=chlorides)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
+  labs(title="chlorides") + theme_cowplot()
+
+qqplot_fixed.acidity <- ggplot(redwine_Data, aes(sample=fixed.acidity)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
+  labs(title="fixed.acidity") + theme_cowplot()
+
+qqplot_citric.acid <- ggplot(redwine_Data, aes(sample=citric.acid)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
+  labs(title="citric.acid") + theme_cowplot()
+
+qqplot_volatile.acidity <- ggplot(redwine_Data, aes(sample=volatile.acidity)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
+  labs(title="volatile.acidity") + theme_cowplot()
+
+qqplot_residual.sugar <- ggplot(redwine_Data, aes(sample=residual.sugar)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
+  labs(title="residual.sugar") + theme_cowplot()
+
+qqplot_free.sulfur.dioxide <- ggplot(redwine_Data, aes(sample=free.sulfur.dioxide)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
+  labs(title="free SO2") + theme_cowplot()
+
+qqplot_total.sulfur.dioxide <- ggplot(redwine_Data, aes(sample=total.sulfur.dioxide)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
+  labs(title="total SO2") + theme_cowplot()
+
+qqplot_sulphates <- ggplot(redwine_Data, aes(sample=sulphates)) + stat_qq() + stat_qq_line(color="steelblue", lwd=1) + 
+  labs(title="sulphates") + theme_cowplot()
+
+plot_grid(qqplot_pH, qqplot_density, qqplot_alcohol, qqplot_fixed.acidity, qqplot_citric.acid, qqplot_chlorides, qqplot_volatile.acidity, qqplot_residual.sugar, qqplot_free.sulfur.dioxide, qqplot_total.sulfur.dioxide, qqplot_sulphates)
+
+```
+
+The QQ plots in Figure \@ref(fig:qqplot) for pH and density are shown to have near normal distribution. For the other variables, their data is close to normal distribution within 2 standard deviations of the mean but become right skewed. Positive skewed data is not desirable since high levels can cause misleading data. For our case the data is not too positively skewed.
+
+The boxplots in Figure \@ref(fig:boxplots) show the distribution of data, mean, outliers, lower and upper limits per quality score for each predictor. 
+
+```{r boxplots, echo=FALSE, warning=FALSE, message=FALSE, fig.align="center",fig.width = 9, fig.height=4.5, fig.cap="Box plots of predictors"}
+box1 <- ggplot(redwine_Data, aes(x=as.factor(quality), y=alcohol, color=as.factor(quality))) + geom_boxplot() + 
+  labs(x="quality", y="alcohol", title="alcohol") + theme_classic() + theme(legend.position="none")
+
+box2 <- ggplot(redwine_Data, aes(x=as.factor(quality), y=sulphates, color=as.factor(quality))) + geom_boxplot() + 
+  labs(x="quality", y="sulphates", title="sulphates") + theme_classic() + theme(legend.position="none") 
+
+box3 <- ggplot(redwine_Data, aes(x=as.factor(quality), y=residual.sugar, color=as.factor(quality))) + geom_boxplot() + 
+  labs(x="quality", y="residual sugar", title="residual sugar") + theme_classic() + theme(legend.position="none")
+
+box4 <- ggplot(redwine_Data, aes(x=as.factor(quality), y=citric.acid, color=as.factor(quality))) + geom_boxplot() + 
+  labs(x="quality", y="citric acid", title="citric acid") + theme_classic() + theme(legend.position="none") 
+
+box5 <- ggplot(redwine_Data, aes(x=as.factor(quality), y=chlorides, color=as.factor(quality))) + geom_boxplot() + 
+  labs(x="quality", y="chlorides", title="chlorides") + theme_classic() + theme(legend.position="none")
+
+box6 <- ggplot(redwine_Data, aes(x=as.factor(quality), y=volatile.acidity, color=as.factor(quality))) + geom_boxplot() + 
+  labs(x="quality", y="volatile acidity", title="volatile acidity") + theme_classic() + theme(legend.position="none") 
+
+box7 <- ggplot(redwine_Data, aes(x=as.factor(quality), y=fixed.acidity, color=as.factor(quality))) + geom_boxplot() + 
+  labs(x="quality", y="fixed acidity", title="fixed acidity") + theme_classic() + theme(legend.position="none") 
+
+box8 <- ggplot(redwine_Data, aes(x=as.factor(quality), y=pH, color=as.factor(quality))) + geom_boxplot() + 
+  labs(x="quality", y="pH", title="pH") + theme_classic() + theme(legend.position="none")
+
+box9 <- ggplot(redwine_Data, aes(x=as.factor(quality), y=density, color=as.factor(quality))) + geom_boxplot() + 
+  labs(x="quality", y="density", title="density") + theme_classic() + theme(legend.position="none")
+
+box10 <- ggplot(redwine_Data, aes(x=as.factor(quality), y=total.sulfur.dioxide, color=as.factor(quality))) + geom_boxplot() + 
+  labs(x="quality", y="total sulfur dioxide", title="total SO2") + theme_classic() + theme(legend.position="none")
+
+box11 <- ggplot(redwine_Data, aes(x=as.factor(quality), y=free.sulfur.dioxide, color=as.factor(quality))) + geom_boxplot() + 
+  labs(x="quality", y="free sulfur dioxide", title="free SO2") + theme_classic() + theme(legend.position="none")
+
+plot_grid(box1,box2,box3,box4,box5,box6,box7,box8,box9,box10,box11)
+          
+```
+
+Linear positive relationship appears between quality and alcohol, sulphates, fixed acidity, and citric acid. Higher levels or citric acid and sulphates are preferred since they contribute as preservatives and are antimicrobial which can affect the taste of the wine. Higher percentages of alcohol are also more popular for drinkers. There are also linear negative relationships between quality and density, volatile acidity, pH and chlorides. Visually we can not discern any pattern for fixed.acidity, residual.sugar, the sulfur dioxide variables. There are a number of outliers that will be explored and removed in a section ahead.
+
+# Feature Engineering and Selection
+From the previous section we saw a number of outliers in the data which can affect out model's predictive power. 
+
+```{r summary1, echo=FALSE, message=FALSE, warning=FALSE}
+summary(redwine_Data)
+```
+
+Looking at examples of the summary of the dataset, there are outliers in most of the variables where the max value and min values are far from the mean of each column. We will be using Cook’s Distance to remove these outliers. Cook’s distance considers an observation’s leverage and residual and estimates the data point’s influence. 
+
+```{r diagnostic, echo=FALSE, message=FALSE, warning=FALSE, fig.align="center",fig.width = 6.5, fig.height=4, fig.cap="Diagnostic plots of multiple linear regression model using base dataset"}
+#First use a multiple linear regression model as a baseline model to compare
+model1 <- lm(quality~., data=redwine_Data)
+#baseline model has adjusted R-squared of 0.3561
+par(mfrow=c(2,2))
+plot(model1)
+```
+
+In the diagnostic plots in Figure \@ref(fig:diagnostic), we can see some outliers which we can remove to make our model a better fit. We use cooks.distance on our model to filter out values greater than 4x the mean. Figure \@ref(fig:cooks) visualizes that the points above the blue line are 4x the mean. 67 data outliers were removed from the dataset. The adjusted R-squared had a 12% increase (0.3561 to 0.3989) and the P-values drastically decreased for most variables. The new diagnostic plots shown in Figure \@ref(fig:diagnostic2) have improved as well. The qqplot shows better normal distribution. The Residuals vs Leverage plot do not have any outstanding points with great leverage.
+
+```{r cooks, echo=FALSE, message=FALSE, warning=FALSE, fig.align="center",fig.width = 6.5, fig.height=4, fig.cap="Cooks distance influential points"}
+par(mfrow=c(1,1))
+cooksD <- cooks.distance(model1)
+plot(cooksD, pch = "x", cex=1.5, main="Cooks distance influential points")
+abline(h=4*mean(cooksD, na.rm=TRUE), col = "blue", lwd = 2)
+```
+
+```{r diagnostic2, echo=FALSE, message=FALSE, warning=FALSE, fig.align="center",fig.width = 6.5, fig.height=4, fig.cap="Diagnostic plots of multiple linear regression model using dataset with outliers removed"}
+influential_points <- cooksD[(cooksD > (4*mean(cooksD, na.rm=TRUE)))]
+wine_outliers <- redwine_Data[names(influential_points),]
+redwine_Data2 <- anti_join(redwine_Data, wine_outliers)
+#we see 67 data outliers were removed in new dataset. 
+
+model2 <- lm(redwine_Data2$quality~., data=redwine_Data2)
+#The adjusted R-squared has improved from 0.3561 to 0.3989(a 12% increase). The P-values have decreased for the majority of the 
+#features as well. 
+
+par(mfrow=c(2,2))
+plot(model2)
+```
+
+The table below shows that the skewness values have decreased after the outliers were removed. Skewness values between -0.5 and 0.5 mean the distribution is approximately symmetric. Residual.sugar and chlorides are still highly skewed to the right.
+
+```{r skewness, echo=FALSE, message=FALSE, warning=FALSE, out.height="70%"}
+skew1 <- skewness(redwine_Data$fixed.acidity)
+skew1 <- append(skew1, skewness(redwine_Data$volatile.acidity))
+skew1 <- append(skew1, skewness(redwine_Data$citric.acid))
+skew1 <- append(skew1, skewness(redwine_Data$residual.sugar))
+skew1 <- append(skew1, skewness(redwine_Data$chlorides))
+skew1 <- append(skew1, skewness(redwine_Data$free.sulfur.dioxide))
+skew1 <- append(skew1, skewness(redwine_Data$total.sulfur.dioxide))
+skew1 <- append(skew1, skewness(redwine_Data$density))
+skew1 <- append(skew1, skewness(redwine_Data$pH))
+skew1 <- append(skew1, skewness(redwine_Data$sulphates))
+skew1 <- append(skew1, skewness(redwine_Data$alcohol))
+skew1 <- append(skew1, skewness(redwine_Data$quality))
+
+skew2 <- skewness(redwine_Data2$fixed.acidity)
+skew2 <- append(skew2, skewness(redwine_Data2$volatile.acidity))
+skew2 <- append(skew2, skewness(redwine_Data2$citric.acid))
+skew2 <- append(skew2, skewness(redwine_Data2$residual.sugar))
+skew2 <- append(skew2, skewness(redwine_Data2$chlorides))
+skew2 <- append(skew2, skewness(redwine_Data2$free.sulfur.dioxide))
+skew2 <- append(skew2, skewness(redwine_Data2$total.sulfur.dioxide))
+skew2 <- append(skew2, skewness(redwine_Data2$density))
+skew2 <- append(skew2, skewness(redwine_Data2$pH))
+skew2 <- append(skew2, skewness(redwine_Data2$sulphates))
+skew2 <- append(skew2, skewness(redwine_Data2$alcohol))
+skew2 <- append(skew2, skewness(redwine_Data2$quality))
+
+summary_skew <- rbind(skew1, skew2)
+colnames(summary_skew) <- c("fixed.acidity", "volatile.acidity", "citric.acid", "residual.sugar", "chlorides",
+                            "free.sulfur.dioxide", "total.sulfur.dioxide", "density", "pH", 
+                            "sulphates", "alcohol","quality")
+rownames(summary_skew) <- c("Before", "After")
+summary_skew
+```
+
+A correlation plot Figure (\@ref(fig:corplot)) was created using the new dataset with the outliers removed to see each predictor’s correlation to quality and one another. We notice there are strong correlations between density and fixed.acidity (0.68), fixed.acidity and citric acid (0.68), fixed.acidity and pH (-0.69), free.sulfur.dioxide and total.sulfur.dioxide (0.68). These relatively high numbers can be explained since the sets of variables measure roughly the same property. Still these values can indicate high multicollinearity which can complicate knowing exactly which variables are truly predictive of the outcome. Thus we use the variance inflation factor(VIF) function on a multiple linear regression model and the outputed values fall below the generally accepted value of 10. Removing fixed.acidity and density lowered the VIF values below 3 for all variables. These results indicate we should run models without fixed.acidity and density as predictors. Alcohol, volatile.acidity and sulphates variables being the strongest correlated factors.
+
+```{r corplot, echo=FALSE, message=FALSE, warning=FALSE, fig.align="center",fig.width = 4.5, fig.height=4.8, fig.cap="Correlation plot of variables"}
+par(mfrow=c(1,1))
+corrplot(cor(redwine_Data2), method="shade", type="lower",addCoef.col = "black", diag=FALSE,number.cex=0.7)
+```
+
+Utilizing a subset selection cross-validation method, we seek the feature size that will give the model with the least error. We first split our dataset into training and test sets in a 80:20 ratio. Figure \@ref(fig:cvselect) shows the for loop that performed cross-validation. The best models with the lowest test errors would be with 6,7 or 11 variables. There wasn't much difference in their R-Squared values so we choose to implement our starting multiple linear regresison model with 7 variables as our format. The 7 variables are: volatile.acidity, chlorides, free.sulfur.dioxide, total.sulfur.dioxide, pH, sulphates and alcohol.
+
+```{r cvselect, echo=FALSE, message=FALSE, warning=FALSE, fig.align="center",fig.width = 4.5, fig.height=4.8, fig.cap="Cross-validation selection model"}
+set.seed(3)
+redwine_training <- sample_frac(tbl=redwine_Data2, replace = FALSE, size = 0.80)
+redwine_test <- anti_join(redwine_Data2, redwine_training)
+
+#choosing model size using k-fold cross validation
+library(leaps)
+#write predict method to use regsubsets() since there is no predict() method for regsubsets()
+predict.regsubsets =function (object , newdata ,id ,...){
+  form=as.formula (object$call [[2]])
+  mat=model.matrix(form ,newdata )
+  coefi=coef(object ,id=id)
+  xvars=names(coefi)
+  mat[,xvars]%*%coefi
+}
+
+reg.best=regsubsets(quality~.,data=redwine_Data2 , nvmax=11)
+k=10
+set.seed(3)
+folds=sample (1:k,nrow(redwine_Data2),replace=TRUE)
+cv.errors=matrix (NA,k,11, dimnames =list(NULL , paste (1:11) ))
+
+#ISLR for loop using predict method above
+for(j in 1:k){
+  best.fit=regsubsets(quality~.,data=redwine_Data2[folds!=j,], nvmax=11)
+  for(i in 1:11){
+     pred=predict(best.fit ,redwine_Data2[folds ==j,],id=i)
+     cv.errors[j,i]= mean( ( redwine_Data2$quality[ folds==j]-pred)^2)
+    }
+}
+mean.cv.errors=apply(cv.errors ,2, mean)
+par(mfrow=c(1,1))
+plot(mean.cv.errors ,type="b")
+```
+
+# Modeling
+### Multiple Linear Regression
+From our EDA, feature engineering and selection analysis, seven variables were used for the multiple linear regression model. We start with a multiple linear regression algorithm as a good baseline model to compare other models due to its simplicity. Here is the model summary:
+
+```{r multiSummary, echo=FALSE, message=FALSE, warning=FALSE}
+set.seed(3)
+multi_winefit <- lm(quality~volatile.acidity + chlorides + free.sulfur.dioxide + total.sulfur.dioxide + pH + sulphates + alcohol, data=redwine_training)
+summary(multi_winefit)
+```
+
+The low p values show that the variables all have statistical significance. We found a 0.982% increase (± 0.1252) and 0.282% increase (± 0.01793) in the quality of red wine for every 1% increase in sulphates and alcohol respectively. Notably there is a 1.90% decrease (±0.4538), 0.822% decrease (±0.1087), and 0.533% decrease (±0.1259) in quality for every 1% increase in chlorides, volatile.acidity and pH respectively. These are the following performance metrics on the training set: R-squared: 0.3920, Root Mean Squared Error: 0.5817, Mean Absolute Error: 0.4628 and the test dataset resulted in the following metrics: R2: 0.4940, RMSE:0.5395, MAE:0.4346. The following confusion matrix results in the model’s accuracy of 65%:
+
+```{r multiConfusion, echo=FALSE, message=FALSE, warning=FALSE}
+multi_R2_test <- rsquare(multi_winefit, redwine_test) #R-squared 0.491427
+multi_RMSE_test <- rmse(multi_winefit, redwine_test) #Root Mean Squared Error 0.539477
+multi_MAE_test <- mae(multi_winefit, redwine_test) #Mean Absolute Error 0.434611
+
+#Make a confusion matrix
+multi_pred_test <- predict(multi_winefit, redwine_test) #predict with test dataset
+multi_pred_round <- round(multi_pred_test) #round off values to whole numbers for confusion matrix
+multi_confusion_matrix <- table(predicted = multi_pred_round, actual = redwine_test$quality)
+multi_confusion_matrix
+```
+
+### Least Absolute Shrinkage and Selection Operator (LASSO) Regression
+We use a Lasso regression which regularizes models with penalty factors. Lasso will decreases coefficients of variables deemed not important for prediction even down to 0. Figrue \@ref(fig:lassoplot) illustrates as the model's complexity increases, the MSE decreases. If the model has at least 6 or 5 models the MSE stays low. 
+
+```{r lassoplot, echo=FALSE, message=FALSE, warning=FALSE,fig.align="center", fig.width=6, fig.height=4.5, fig.cap="Mean-Squared Error as a function of (λ)"}
+#LASSO
+library(glmnet)
+
+#prepare model matrix training and test sets
+xtrain <- model.matrix(quality~., redwine_training)[,-1]
+ytrain <- redwine_training$quality
+xtest <- model.matrix(quality~., redwine_test)[,-1]
+ytest <- redwine_test$quality
+set.seed(3)
+cv.lasso.wine <- cv.glmnet(xtrain, ytrain, alpha=1)
+plot(cv.lasso.wine)
+```
+
+Evaluating the model’s performance on the test dataset resulted in the following metrics: R2: 0.4923, RMSE:0.4366, MAE:0.5405. The following confusion matrix results in the model’s accuracy of 63%.
+```{r lassoMatrix, echo=FALSE, message=FALSE, warning=FALSE}
+bestlam <- cv.lasso.wine$lambda.min # 0.0006777187
+
+#model with best lambda
+lasso.best.wine <- glmnet(xtrain, ytrain, alpha=1, lambda=bestlam)
+
+lasso.best.wine <- glmnet(xtrain, ytrain, alpha=1, lambda=bestlam)
+lasso.pred <- predict(lasso.best.wine, xtest)
+lasso_R2_wine <- cor(ytest, lasso.pred)^2 #0.492290
+lasso_MAE_wine <- mean(abs(ytest-lasso.pred)) #0.4366197
+lasso_RMSE_wine <- sqrt(mean((ytest-lasso.pred)^2)) #0.5404831
+
+#Make a confusion matrix
+lasso_pred_round <- round(lasso.pred) #round off values to whole numbers for confusion matrix
+lasso_confusion_matrix <- table(predicted = lasso_pred_round, actual = redwine_test$quality)
+lasso_confusion_matrix
+
+```
+
+
+### Partial Least Squares Regression
+Partial Least Squares has some advantages over a Principle Component Regression since PLS is a supervised alternative to PCR. PLS attempts to find directions that help explain both the response and the predictors. However, while the supervised dimension reduction of PLS can reduce bias, it also has the potential to increase variance. Our PLS Regression summary is below:
+```{r PLSsummary, echo=FALSE, message=FALSE, warning=FALSE}
+library(pls)
+
+set.seed(3)
+pls.redwine <- plsr(quality~., data=redwine_training, scale=TRUE, validation="CV")
+summary(pls.redwine)
+
+```
+
+```{r PLSplot, echo=FALSE, message=FALSE, warning=FALSE,fig.align="center", fig.width=6, fig.height=4.5, fig.cap="Mean-Squared Error as a function of the # of components"}
+validationplot(pls.redwine, val.type="MSEP")
+```
+
+```{r PLSconfusion, echo=FALSE, message=FALSE, warning=FALSE}
+pls.R2.test <- rsquare(pls.redwine, redwine_test) #0.491523
+pls.RMSE.test <- rmse(pls.redwine, redwine_test) #0.541014
+pls.MAE.test <- mae(pls.redwine, redwine_test) #0.435541
+
+
+pls_pred_test <- predict(pls.redwine, newdata=redwine_test, ncomp=7)
+pls_pred_round <- round(pls_pred_test)
+pls_confusion_matrix <- table(fitted.values = pls_pred_round, actual = redwine_test$quality)
+pls_confusion_matrix
+```
+
+### Random Forests Regression 
+Random forest combines predictions from multiple algorithms to make a more accurate prediction. It constructs several decision trees and outputs the average of all their predictions to generate one great prediction. Our random forest model summary is below:
+
+```{r randomSummary, echo=FALSE, message=FALSE, warning=FALSE}
+library(randomForest)
+set.seed(3)
+rf.redwine <- randomForest(quality~., data=redwine_training, mtry = 11/3, importance=TRUE)
+#summary of model
+print(rf.redwine)
+```
+
+All variables were included instead of seven variables as it increased the accuracy of the model. The following Figure \@ref(fig:varImpplot) shows the decreases in accuracy of the model if the values of that variable were randomly permuted. We see how important alcohol, sulphates, volatile.acidity and total.sulfur.dioxide are in predicting red wine quality. 
+
+```{r varImpplot, echo=FALSE, message=FALSE, warning=FALSE,fig.align="center", fig.width=6, fig.height=4.5, fig.cap="Variable Importance Plot"}
+par(mfrow=c(1,1))
+varImpPlot(rf.redwine, type=1, main="Accuracy Decrease")
+```
+
+Evaluating the model’s performance on the training set resulted in the following metrics: R-squared: 0.5092, Root Mean Squared Error: 0.5239, Mean Absolute Error: 0.3943 and the test dataset resulted in the following metrics: R2: 0.5292, RMSE:0.5235, MAE:0.4159. The following confusion matrix results in the model’s accuracy of 67%:
+
+```{r randomConfusion, echo=FALSE, message=FALSE, warning=FALSE}
+rf_R2_test <- rsquare(rf.redwine, redwine_test) #R-squared 0.525642
+rf_RMSE_test <- rmse(rf.redwine, redwine_test) #Root Mean Squared Error 0.523476
+rf_MAE_test <- mae(rf.redwine, redwine_test) #Mean Absolute Error 0.415944
+
+#Make a confusion matrix
+rf_pred_test <- predict(rf.redwine, newdata=redwine_test) #predict with test dataset
+rf_pred_round <- round(rf_pred_test) #round off values to whole numbers for confusion matrix
+rf_confusion_matrix <- table(predicted = rf_pred_round, actual = redwine_test$quality)
+rf_confusion_matrix
+```
+
+# Conclusion
+  From our analysis the RandomForest model as our best model based on multiple reasons. First, Random Forest model showed the highest R-squared value on both train and performance datasets. Second, Random Forest model showed the lowest root mean squared error as well as mean absolute error on both train and performance datasets.  Third, Random Forest model had the highest accuracy on test data with 67%. Random Forest model was the best model out of 4 models probably because it tends to work well against a large dataset, withstands missing data, is not sensitive to outliers by binning the variables, is nonparametric, and balances the bias-variance trade-off well despite potential risk of overfitting and bias toward variables with more levels. 
+
+```{r conclusion, echo=FALSE, message=FALSE, warning=FALSE}
+df <- data.frame(R2=c(multi_R2_test, lasso_R2_wine, pls.R2.test, rf_R2_test), RMSE=c(multi_RMSE_test, lasso_RMSE_wine, pls.RMSE.test, rf_RMSE_test), MAE=c(multi_MAE_test, lasso_MAE_wine, pls.MAE.test, rf_MAE_test), Accuracy=c("65%", "63%", "63%", "67%"))
+rownames(df) <- c("Multiple Linear Regression", "Lasso Regression", "Partial Least Squares Regression", "RandomForest Regression")
+df
+```
+
+  We learned that to build the best machine learning model possible, we need to add as much data as possible, treat missing and/or outlier values, perform feature transformation and creation whenever necessary, go through feature selection process, experiment multiple algorithms to choose an ideal machine learning algorithm, and combine the result of multiple models through bagging and boosting.
+	If we were to continue working on this problem, then we will definitely add more data points (wines from different regions, different types of wines, quality judgement from additional wine experts), run additional machine learning algorithms, and build a classification model to see if we can classify wines good or bad. 
+
+
+
+
+
